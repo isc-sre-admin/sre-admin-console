@@ -25,7 +25,9 @@
               <li>Enable MFA and register directory</li>
               <li>Configure branding and hybrid activation</li>
             </ul>
-            <button class="btn btn-primary w-100" type="button" disabled>Run `provision-ad-connector`</button>
+            <a class="btn btn-primary w-100" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-ad-connector' }">
+              Run `provision-ad-connector`
+            </a>
           </div>
         </article>
       </div>
@@ -37,9 +39,15 @@
               Launch Windows/Linux WorkSpaces or EC2 instances in existing enclaves with AD user and research group context.
             </p>
             <div class="d-grid gap-2">
-              <button class="btn btn-outline-secondary" type="button" disabled>Provision Linux WorkSpace</button>
-              <button class="btn btn-outline-secondary" type="button" disabled>Provision Windows WorkSpace</button>
-              <button class="btn btn-outline-secondary" type="button" disabled>Provision EC2 Instance</button>
+              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-linux-workspace' %}">
+                Provision Linux WorkSpace
+              </a>
+              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-windows-workspace' %}">
+                Provision Windows WorkSpace
+              </a>
+              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-ec2-instance' %}">
+                Provision EC2 Instance
+              </a>
             </div>
           </div>
         </article>
@@ -116,6 +124,7 @@
                 <th scope="col">Enclave</th>
                 <th scope="col">Started</th>
                 <th scope="col">Status</th>
+                <th scope="col" class="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +134,13 @@
                   <td>{{ execution.enclave }}</td>
                   <td>{{ execution.started_at }}</td>
                   <td><span class="badge status-running">{{ execution.status }}</span></td>
+                  <td class="text-end">
+                    {% if execution.execution_id %}
+                      <a href="{% url 'landing:pipeline-execution-detail' execution_id=execution.execution_id %}">View details</a>
+                    {% else %}
+                      <span class="text-secondary">-</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
