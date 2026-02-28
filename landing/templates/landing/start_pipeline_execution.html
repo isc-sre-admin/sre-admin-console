@@ -1,0 +1,149 @@
+{% extends "landing/base.html" %}
+
+{% block title %}Start {{ contract.name }} | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">Start pipeline execution</p>
+    <h2 class="mb-2">{{ contract.display_name }}</h2>
+    <p class="text-secondary mb-2">{{ contract.function }}</p>
+    <p class="small text-secondary mb-0">{{ contract.description }}</p>
+  </section>
+
+  <section class="mb-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h3 class="h6 mb-3">Switch pipeline</h3>
+        <div class="d-flex flex-wrap gap-2">
+          {% for available_contract in available_contracts %}
+            <a
+              class="btn btn-sm {% if available_contract.name == contract.name %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+              href="{% url 'landing:start-pipeline-execution' pipeline_name=available_contract.name %}"
+            >
+              {{ available_contract.name }}
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if started_execution %}
+    <section class="mb-4">
+      <div class="alert alert-success mb-0" role="status" aria-live="polite">
+        <h3 class="h5 mb-2">Pipeline execution started</h3>
+        <p class="mb-2">
+          The execution request for <code>{{ started_execution.name }}</code> was accepted at
+          {{ started_execution.started_at }}.
+        </p>
+        <p class="mb-2">
+          Execution ARN:
+          <code>{{ started_execution.execution_arn }}</code>
+        </p>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <a
+            class="btn btn-primary"
+            href="{% url 'landing:pipeline-execution-detail' execution_id=started_execution.execution_id %}"
+          >
+            View execution details
+          </a>
+          <a class="btn btn-outline-primary" href="{% url 'landing:home' %}">Return to landing page</a>
+        </div>
+        <details>
+          <summary class="small">Submitted input payload</summary>
+          <ul class="small mt-2 mb-0">
+            {% for key, value in started_execution.payload.items %}
+              <li><code>{{ key }}</code>: {{ value }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+      </div>
+    </section>
+  {% endif %}
+
+  <section>
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h3 class="h5 mb-3">Pipeline inputs</h3>
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-warning" role="alert">
+            {% for error in form.non_field_errors %}
+              <p class="mb-0">{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate aria-label="Start pipeline execution form">
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ field.id_for_label }}">
+                {{ field.label }}
+                {% if field.field.required %}
+                  <span class="text-danger" aria-hidden="true">*</span>
+                  <span class="visually-hidden">(required)</span>
+                {% endif %}
+              </label>
+
+              {% if field.name == "enclave" %}
+                <label class="form-label small text-secondary" for="enclave-typeahead">Typeahead filter</label>
+                <input
+                  id="enclave-typeahead"
+                  class="form-control form-control-sm mb-2"
+                  type="search"
+                  placeholder="Type to filter enclave options"
+                  autocomplete="off"
+                />
+              {% endif %}
+
+              {{ field }}
+
+              {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+              {% endif %}
+
+              {% if field.errors %}
+                <div class="invalid-feedback d-block">
+                  {% for error in field.errors %}
+                    <p class="mb-0">{{ error }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="submit">Start execution</button>
+            <a class="btn btn-outline-secondary" href="{% url 'landing:home' %}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const filterInput = document.getElementById("enclave-typeahead");
+      const enclaveSelect = document.getElementById("id_enclave");
+      if (!filterInput || !enclaveSelect) {
+        return;
+      }
+
+      filterInput.addEventListener("input", () => {
+        const filterTerm = filterInput.value.trim().toLowerCase();
+        for (const option of enclaveSelect.options) {
+          if (!option.value) {
+            continue;
+          }
+          option.hidden = filterTerm.length > 0 && !option.textContent.toLowerCase().includes(filterTerm);
+        }
+
+        const selectedOption = enclaveSelect.options[enclaveSelect.selectedIndex];
+        if (selectedOption?.hidden) {
+          enclaveSelect.value = "";
+        }
+      });
+    })();
+  </script>
+{% endblock content %}
