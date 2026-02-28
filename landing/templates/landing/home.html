@@ -1,0 +1,194 @@
+{% extends "landing/base.html" %}
+
+{% block title %}Landing Page | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">Landing Page</p>
+    <h2 class="mb-3">Operational workflows at a glance</h2>
+    <p class="text-secondary mb-0">
+      Start the most common enclave setup, resource provisioning, and software deployment workflows from one place.
+    </p>
+  </section>
+
+  <section class="mb-5">
+    <div class="row g-4">
+      <div class="col-12 col-lg-4">
+        <article class="card h-100 workflow-card shadow-sm border-0">
+          <div class="card-body">
+            <h3 class="h5 card-title">1) Set up a new enclave</h3>
+            <p class="card-text text-secondary">
+              For newly onboarded AWS accounts, start with the AD connector workflow so WorkSpaces and identity flows are ready.
+            </p>
+            <ul class="small ps-3 mb-3">
+              <li>Create AD Connector</li>
+              <li>Enable MFA and register directory</li>
+              <li>Configure branding and hybrid activation</li>
+            </ul>
+            <button class="btn btn-primary w-100" type="button" disabled>Run `provision-ad-connector`</button>
+          </div>
+        </article>
+      </div>
+      <div class="col-12 col-lg-4">
+        <article class="card h-100 workflow-card shadow-sm border-0">
+          <div class="card-body">
+            <h3 class="h5 card-title">2) Provision enclave resources</h3>
+            <p class="card-text text-secondary">
+              Launch Windows/Linux WorkSpaces or EC2 instances in existing enclaves with AD user and research group context.
+            </p>
+            <div class="d-grid gap-2">
+              <button class="btn btn-outline-secondary" type="button" disabled>Provision Linux WorkSpace</button>
+              <button class="btn btn-outline-secondary" type="button" disabled>Provision Windows WorkSpace</button>
+              <button class="btn btn-outline-secondary" type="button" disabled>Provision EC2 Instance</button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="col-12 col-lg-4">
+        <article class="card h-100 workflow-card shadow-sm border-0">
+          <div class="card-body">
+            <h3 class="h5 card-title">3) Deploy software changes</h3>
+            <p class="card-text text-secondary">
+              Prepare Ansible playbooks or PowerShell scripts, then transfer and run them against running WorkSpaces or EC2 instances.
+            </p>
+            <ul class="small ps-3 mb-3">
+              <li>Select scripts and playbooks</li>
+              <li>Edit and save updates</li>
+              <li>Commit and publish for deployment</li>
+            </ul>
+            <button class="btn btn-outline-secondary w-100" type="button" disabled>Open software deployment tools</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+      <div>
+        <h2 class="h4 mb-1">Pipeline activity</h2>
+        <p class="text-secondary mb-0">Monitor currently running pipelines and review previous executions.</p>
+      </div>
+      <span class="badge text-bg-light">Sample data shown until API integration is enabled</span>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="pipeline-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link active"
+          id="active-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#active-panel"
+          type="button"
+          role="tab"
+          aria-controls="active-panel"
+          aria-selected="true"
+        >
+          Currently executing
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="history-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#history-panel"
+          type="button"
+          role="tab"
+          aria-controls="history-panel"
+          aria-selected="false"
+        >
+          Execution history
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content card shadow-sm border-0">
+      <div class="tab-pane fade show active p-3 p-lg-4" id="active-panel" role="tabpanel" aria-labelledby="active-tab">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <caption class="text-secondary">
+              Active pipeline executions across enclaves.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Pipeline</th>
+                <th scope="col">Enclave</th>
+                <th scope="col">Started</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for execution in active_executions %}
+                <tr>
+                  <td>{{ execution.name }}</td>
+                  <td>{{ execution.enclave }}</td>
+                  <td>{{ execution.started_at }}</td>
+                  <td><span class="badge status-running">{{ execution.status }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade p-3 p-lg-4" id="history-panel" role="tabpanel" aria-labelledby="history-tab">
+        <form class="row g-3 align-items-end mb-3" action="#" method="get" aria-label="Execution history filters">
+          <div class="col-12 col-md-3">
+            <label class="form-label" for="relative-range">Relative range</label>
+            <select class="form-select" id="relative-range" name="relative_range">
+              {% for days in relative_ranges %}
+                <option value="{{ days }}" {% if days == default_range_days %}selected{% endif %}>Last {{ days }} days</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="start-date">Start date</label>
+            <input class="form-control" id="start-date" name="start_date" type="date" value="{{ default_start_date }}" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label" for="end-date">End date</label>
+            <input class="form-control" id="end-date" name="end_date" type="date" value="{{ default_end_date }}" />
+          </div>
+          <div class="col-12 col-md-3">
+            <button class="btn btn-outline-primary w-100" type="submit">Apply filters</button>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <caption class="text-secondary">
+              Historical pipeline executions.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Pipeline</th>
+                <th scope="col">Enclave</th>
+                <th scope="col">Completed</th>
+                <th scope="col">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for execution in recent_executions %}
+                <tr>
+                  <td>{{ execution.name }}</td>
+                  <td>{{ execution.enclave }}</td>
+                  <td>{{ execution.completed_at }}</td>
+                  <td>
+                    {% if execution.status == "Succeeded" %}
+                      <span class="badge status-succeeded">{{ execution.status }}</span>
+                    {% elif execution.status == "Failed" %}
+                      <span class="badge status-failed">{{ execution.status }}</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">{{ execution.status }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock content %}
