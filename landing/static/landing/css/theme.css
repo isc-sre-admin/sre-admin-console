@@ -1,0 +1,85 @@
+:root {
+  --sre-bg: #f5f6f8;
+  --sre-text: #1f2937;
+  --sre-muted: #4b5563;
+  --sre-card: #ffffff;
+  --sre-border: #dce2ea;
+  --sre-primary: #2563eb;
+}
+
+body.app-shell {
+  background-color: var(--sre-bg);
+  color: var(--sre-text);
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: auto;
+  background: #ffffff;
+  color: #111827;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #111827;
+  border-radius: 0.375rem;
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+.section-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sre-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.workflow-card {
+  background-color: var(--sre-card);
+}
+
+.workflow-card .card-title {
+  color: #111827;
+}
+
+.workflow-card .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.table thead th {
+  border-bottom-color: var(--sre-border);
+}
+
+.table > :not(caption) > * > * {
+  border-bottom-color: var(--sre-border);
+}
+
+.status-running {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.status-succeeded {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-failed {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-primary {
+  background-color: var(--sre-primary);
+  border-color: var(--sre-primary);
+}
+
+.btn-primary:not(:disabled):hover,
+.btn-primary:not(:disabled):focus {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
