@@ -103,4 +103,33 @@ indenting for easy readability.
 The user interface should be clean and predominantly rendered in white and light gray so it is not jarring or unpleasant for the end users to look at. It should feel contemporary and well-organized. 
 It should be possible to provide a logo and to adjust the colors in a central place (e.g. in a single CSS file or similar location). 
 
+## Cursor Cloud specific instructions
 
+### Project overview
+
+This is a Django-based admin console for AWS Secure Research Enclave (SRE) operations. The Django project is named `sre_console` and lives in the workspace root.
+
+### Running services
+
+- **Dev server**: `source .venv/bin/activate && python manage.py runserver 0.0.0.0:8000`
+- **Database**: SQLite (default, no external DB required for development)
+- The dev superuser is `admin` / `admin` (created during initial setup)
+
+### Key commands (all run from `/workspace` with venv activated)
+
+| Task | Command |
+|------|---------|
+| Activate venv | `source .venv/bin/activate` |
+| Run dev server | `python manage.py runserver 0.0.0.0:8000` |
+| Run tests | `pytest` |
+| Run linter | `ruff check .` |
+| Run SAST | `bandit -r . -c pyproject.toml` |
+| Run migrations | `python manage.py migrate` |
+| Django system check | `python manage.py check` |
+
+### Caveats
+
+- `ALLOWED_HOSTS` is set to `["*"]` in `sre_console/settings.py` for development convenience.
+- Bandit reports the default Django `SECRET_KEY` as a low-severity finding — this is expected in development and not a real issue.
+- The `.venv` directory is in the workspace root and is gitignored. The update script recreates it if missing.
+- `db.sqlite3` is the development database — it is gitignored and can be safely deleted and recreated with `python manage.py migrate`.
