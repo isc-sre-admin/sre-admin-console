@@ -1,0 +1,29 @@
+# Contract: deploy-activation-gpo operation
+name: deploy-activation-gpo
+function: Create GPO to run SSM hybrid activation script at startup on Windows WorkSpaces.
+modes:
+  verify: Runs OU guardrail (rejects default Computers OU or domain root); with instance_id and ou_path can report computer_count_in_ou and GPO status. No GPO creation.
+  modify: Creates GPO on Windows instance; links to OU; configures startup script. Uses domain admin credentials from Secrets Manager in destination account.
+inputs:
+  required:
+    - operation
+    - mode
+    - destination_account_id
+  optional:
+    - instance_id
+    - domain_admin_username
+    - domain_admin_password_secret_name
+    - gpo_name
+    - startup_script_path
+    - ou_path
+    - destination_region
+    - allow_broad_ou_override
+outputs:
+  success:
+    - status
+    - verified
+    - computer_count_in_ou
+  error:
+    - status
+    - error
+    - message

@@ -1,0 +1,64 @@
+# Contract: provision-ad-connector pipeline
+# Human- and machine-readable summary of name, function, inputs, and outputs.
+name: provision-ad-connector
+function: Deploy AD Connector, RADIUS/MFA, Duo Auth Proxy, register directory, branding, SSM hybrid activation.
+modes:
+  verify: Each step runs in verify mode where supported; no resources created or changed; validates that AD Connector, RADIUS secret, MFA, directory registration, branding, and activation already exist and match.
+  modify: Creates or updates all resources; each component operation is idempotent (security groups, AD Connector, RADIUS secret, playbook, MFA, directory registration, branding, activation).
+description: |
+  Deploys AD Connector in destination account; optionally creates security groups;
+  waits for directory Active; creates RADIUS shared secret; lists Duo Auth Proxy nodes;
+  applies duoauthproxy.yaml to node(s); enables RADIUS MFA; registers directory with
+  WorkSpaces; configures workspace branding; creates SSM hybrid activation.
+
+inputs:
+  required:
+    - mode
+    - destination_account_id
+    - enclave_name
+  optional:
+    - security_groups
+    - ou_path
+    - source_region
+    - destination_region
+  # Other fields filled from config (create_ad_connector_defaults, etc.)
+
+outputs:
+  on_success: Pipeline completes with no step failure; directory_id and activation from steps.
+  on_failure: Fail state with error/cause from failing step.
+
+component_operations:
+  - operation: create-security-group
+    when: security_groups present
+    inputs: mode, destination_account_id, security_group_name, ingress_rules, egress_rules
+    outputs: status, security_group_id
+  - operation: create-ad-connector
+    inputs: mode, destination_account_id, optional security_group_name
+    outputs: directory_id
+  - operation: check-ad-connector-state
+    inputs: destination_account_id, directory_id
+    outputs: ready, state
+  - operation: create-radius-shared-secret
+    inputs: mode, destination_account_id, enclave_name
+    outputs: status
+  - operation: list-duo-auth-proxy-nodes
+    inputs: destination_account_id
+    outputs: node_ids, node_account_id
+  - operation: apply-ansible-playbook
+    inputs: node_id(s), playbook duoauthproxy.yaml, secret_name, mode
+    outputs: status, config_changed
+  - operation: get-remaining-node-indices
+    inputs: node_ids
+    outputs: remaining_indices
+  - operation: enable-ad-connector-mfa
+    inputs: mode, destination_account_id, enclave_name
+    outputs: status
+  - operation: register-workspace-directory
+    inputs: destination_account_id, directory_id, ou_path, optional security_group
+    outputs: status
+  - operation: configure-workspace-branding
+    inputs: mode, destination_account_id, directory_id
+    outputs: status
+  - operation: create-ssm-hybrid-activation
+    inputs: mode, destination_account_id, iam_role default, instance_limit 10
+    outputs: activation_id, instance_name

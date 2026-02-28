@@ -1,0 +1,21 @@
+# Contract: check-bundle-state operation
+name: check-bundle-state
+function: Return WorkSpaces bundle state; used for pipeline polling until available.
+modes:
+  default: Read-only. Returns bundle state and ready when available. No mode parameter.
+inputs:
+  required:
+    - operation
+    - bundle_id
+    - destination_account_id
+  optional:
+    - source_region
+outputs:
+  success:
+    - status
+    - ready
+    - state
+  error:
+    - status
+    - error
+    - message

@@ -1,0 +1,32 @@
+# Contract: create-ssm-hybrid-activation operation
+name: create-ssm-hybrid-activation
+function: Create or verify SSM hybrid activation; idempotent; stores activation in Secrets Manager.
+modes:
+  verify: Checks for active activation with available capacity; returns verified true when found. Returns error VerificationFailed when none.
+  modify: Reuses active activation with matching DefaultInstanceName and capacity when possible; otherwise creates new activation and stores in Secrets Manager. Idempotent; ssm_default_instance_name looks up existing activation.
+inputs:
+  required:
+    - operation
+    - mode
+    - destination_account_id
+    - instance_limit
+    - iam_role
+  optional:
+    - activation_description
+    - activation_expiry_date
+    - instance_name
+    - username
+    - user_name
+    - ssm_default_instance_name
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+    - activation_id
+    - instance_name
+    - verified
+  error:
+    - status
+    - error
+    - message

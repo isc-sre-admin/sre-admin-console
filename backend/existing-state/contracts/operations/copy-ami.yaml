@@ -1,0 +1,23 @@
+# Contract: copy-ami operation
+name: copy-ami
+function: Create local copy of shared AMI in destination account; idempotent by copy name.
+modes:
+  verify: Assumes verifier role; checks that a copy with the expected name exists in destination account.
+  modify: Assumes modifier role; copies the shared AMI into destination account. Idempotent when copy with same name exists.
+inputs:
+  required:
+    - operation
+    - mode
+    - ami_id
+    - destination_account_id
+  optional:
+    - source_region
+    - copy_name
+outputs:
+  success:
+    - status
+    - new_ami_id
+  error:
+    - status
+    - error
+    - message

@@ -1,0 +1,17 @@
+# Contract: get-remaining-node-indices operation
+name: get-remaining-node-indices
+function: Return indices of nodes not yet processed (for multi-node apply in provision-ad-connector).
+modes:
+  default: Returns array of indices (0-based) for nodes in node_ids that are not yet processed. No mode parameter.
+inputs:
+  required:
+    - operation
+    - node_ids
+outputs:
+  success:
+    - status
+    - remaining_indices
+  error:
+    - status
+    - error
+    - message

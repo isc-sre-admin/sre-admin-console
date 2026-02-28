@@ -1,0 +1,20 @@
+# Contract: share-image operation
+name: share-image
+function: Share WorkSpaces image with destination account.
+modes:
+  verify: Checks that image is shared with destination; no change.
+  modify: Shares the WorkSpaces image with the destination account.
+inputs:
+  required:
+    - operation
+    - image_id
+    - destination_account_id
+  optional:
+    - mode
+outputs:
+  success:
+    - status
+  error:
+    - status
+    - error
+    - message

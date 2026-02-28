@@ -1,0 +1,24 @@
+# Contract: create-bundle operation
+name: create-bundle
+function: Create WorkSpaces bundle from image in destination account.
+modes:
+  verify: Checks that a bundle for the image exists in destination; no creation.
+  modify: Creates bundle from image in destination account.
+inputs:
+  required:
+    - operation
+    - mode
+    - image_id
+    - destination_account_id
+    - hardware_type
+    - storage_settings
+  optional:
+    - source_region
+outputs:
+  success:
+    - status
+    - bundle_id
+  error:
+    - status
+    - error
+    - message

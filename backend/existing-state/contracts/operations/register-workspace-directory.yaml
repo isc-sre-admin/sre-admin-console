@@ -1,0 +1,23 @@
+# Contract: register-workspace-directory operation
+name: register-workspace-directory
+function: Register directory with WorkSpaces; apply defaults and optional ou_path; idempotent.
+modes:
+  default: Registers directory; polls until REGISTERED; applies directory defaults (ModifyWorkspaceCreationProperties, etc.). Idempotent when already registered. No mode parameter.
+inputs:
+  required:
+    - operation
+    - destination_account_id
+    - directory_id
+  optional:
+    - subnet_ids
+    - ou_path
+    - security_group
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+  error:
+    - status
+    - error
+    - message

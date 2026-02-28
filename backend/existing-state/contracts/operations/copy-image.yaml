@@ -1,0 +1,22 @@
+# Contract: copy-image operation
+name: copy-image
+function: Copy shared WorkSpaces image into destination account (local copy).
+modes:
+  verify: Checks that local copy exists in destination; no copy performed.
+  modify: Copies the shared image into the destination account (local copy with -local suffix).
+inputs:
+  required:
+    - operation
+    - mode
+    - image_id
+    - destination_account_id
+  optional:
+    - source_region
+outputs:
+  success:
+    - status
+    - new_image_id
+  error:
+    - status
+    - error
+    - message

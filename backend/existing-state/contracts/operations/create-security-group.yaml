@@ -1,0 +1,30 @@
+# Contract: create-security-group operation
+name: create-security-group
+function: Create EC2 security group with ingress/egress rules; idempotent by name.
+modes:
+  verify: Assumes verifier role; checks security group with name exists in VPC. Returns verified true and security_group_id if found.
+  modify: Creates security group if missing; adds ingress and egress rules. Idempotent; re-run returns success with already_exists when group exists.
+inputs:
+  required:
+    - operation
+    - mode
+    - security_group_name
+    - ingress_rules
+    - egress_rules
+    - destination_account_id
+  optional:
+    - vpc_id
+    - vpc_name
+    - description
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+    - security_group_id
+    - already_exists
+    - verified
+  error:
+    - status
+    - error
+    - message

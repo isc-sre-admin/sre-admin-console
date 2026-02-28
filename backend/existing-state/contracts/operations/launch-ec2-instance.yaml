@@ -1,0 +1,41 @@
+# Contract: launch-ec2-instance operation
+name: launch-ec2-instance
+function: Launch EC2 instance with AMI, storage, security groups, tags; idempotent by instance_name.
+modes:
+  verify: When instance_id or instance_name provided, verifies that instance exists. With image_id can find existing instance launched from that AMI.
+  modify: Launches instance or returns existing when instance_name matches or same image_id and tag-resource-group. Optionally runs domain join when not skip_domain_join_in_launch.
+inputs:
+  required:
+    - operation
+    - mode
+    - image_id or ami_id
+    - instance_type
+    - destination_account_id
+  optional:
+    - instance_name
+    - storage_settings
+    - tag-resource-group
+    - subnet_id
+    - subnet_names
+    - security_group_ids
+    - security_groups
+    - keypair_name
+    - key_name
+    - iam_instance_profile_name
+    - domain_join_directory_name
+    - domain_join_username
+    - domain_join_password_secret_name
+    - domain_join_computer_ou
+    - domain_join_use_aws_document
+    - skip_domain_join_in_launch
+    - ssm_registration_timeout_seconds
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+    - instance_id
+  error:
+    - status
+    - error
+    - message

@@ -1,0 +1,24 @@
+# Contract: list-duo-auth-proxy-nodes operation
+name: list-duo-auth-proxy-nodes
+function: List EC2 instances tagged Function duo-auth-proxy that are SSM-managed and Online.
+modes:
+  default: Read-only. Returns node_ids and node_account_id. No mode parameter.
+inputs:
+  required:
+    - operation
+    - destination_account_id
+  optional:
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+    - node_ids
+    - node_account_id
+    - tagged_count
+    - ssm_online_count
+    - message
+  error:
+    - status
+    - error
+    - message

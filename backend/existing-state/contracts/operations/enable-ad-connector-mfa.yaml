@@ -1,0 +1,32 @@
+# Contract: enable-ad-connector-mfa operation
+name: enable-ad-connector-mfa
+function: Enable RADIUS MFA on AD Connector using enclave shared secret; idempotent.
+modes:
+  verify: Checks that RADIUS MFA is enabled and settings match. Returns verified false with radius_status Failed when in failed state (suggests re-run modify).
+  modify: Enables RADIUS via Directory Service enable_radius. Idempotent when already enabled with matching settings; retries when RadiusStatus is Failed.
+inputs:
+  required:
+    - operation
+    - mode
+    - destination_account_id
+    - enclave_name
+    - radius_server_display_label
+    - radius_server_dns_name
+    - secret_name
+    - radius_server_port
+    - protocol
+    - server_timeout
+    - max_radius_retry_requests
+  optional:
+    - directory_dns_name
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+    - verified
+    - radius_status
+  error:
+    - status
+    - error
+    - message

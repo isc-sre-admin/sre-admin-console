@@ -1,0 +1,23 @@
+# Contract: check-ad-connector-state operation
+name: check-ad-connector-state
+function: Return AD Connector directory stage; used to poll until Active.
+modes:
+  default: Read-only. Returns directory stage (e.g. Creating, Active) and ready true when Active. No mode parameter.
+inputs:
+  required:
+    - operation
+    - destination_account_id
+    - directory_id or directory_dns_name
+  optional:
+    - destination_region
+    - source_region
+outputs:
+  success:
+    - status
+    - ready
+    - state
+    - directory_id
+  error:
+    - status
+    - error
+    - message

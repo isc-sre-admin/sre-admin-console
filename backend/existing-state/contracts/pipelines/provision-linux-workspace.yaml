@@ -1,0 +1,84 @@
+# Contract: provision-linux-workspace pipeline
+# Human- and machine-readable summary of name, function, inputs, and outputs.
+name: provision-linux-workspace
+function: Normalize input; image → share → copy → bundle → launch Linux WorkSpace → tag → managed-workspace playbook; supports playbook-only rerun with node_id.
+modes:
+  verify: When mode is verify (e.g. no source_workspace_id), create-workspace-image, copy-image, and create-bundle run in verify mode; pipeline skips image/bundle wait loops and launches using existing image/bundle.
+  modify: Creates image from workspace when needed; shares and copies image; creates bundle; launches workspace; tags managed instance; applies managed-workspace playbook. Full provisioning path.
+description: |
+  Normalizes input; creates or verifies WorkSpace image in source account; shares and
+  copies image to destination; creates bundle; launches Linux WorkSpace; waits for SSM
+  registration; tags managed instance; applies managed-workspace playbook. Supports
+  rerun with node_id for playbook-only on existing WorkSpace.
+
+inputs:
+  required:
+    - destination_account_id
+    - username
+    # image_name or source_workspace_id + image_name per path
+  optional:
+    - source_workspace_id
+    - image_name
+    - workspace_id
+    - hardware_type
+    - storage_settings
+    - directory_id
+    - running_mode
+    - encrypt_root_volume
+    - encrypt_user_volume
+    - encryption_key_alias
+    - tag-user-email
+    - tag-research-group
+    - tag-enclave-id
+    - tag-username
+    - node_id
+    - destination_workspace_id
+    - ssm-default-instance-name
+    - source_region
+    - destination_region
+    - mode
+
+outputs:
+  on_success: Pipeline completes; workspace_id and (if applied) playbook result.
+  on_failure: Fail state with error/cause from failing step.
+
+component_operations:
+  - operation: normalize-provision-linux-workspace-input
+    inputs: pipeline_input
+    outputs: normalized
+  - operation: create-ssm-hybrid-activation
+    inputs: mode, source_account_id, username, iam_role, instance_limit
+    outputs: instance_name, activation_id
+  - operation: create-workspace-image
+    inputs: mode verify or modify, workspace_id, image_name, destination_account_id
+    outputs: image_id, already_exists
+  - operation: check-workspace-state
+    inputs: workspace_id, destination_account_id
+    outputs: ready
+  - operation: check-image-state
+    inputs: image_id, destination_account_id
+    outputs: ready
+  - operation: share-image
+    inputs: image_id, destination_account_id, mode
+    outputs: status
+  - operation: copy-image
+    inputs: image_id, destination_account_id, mode, source_region
+    outputs: new_image_id
+  - operation: create-bundle
+    inputs: image_id, destination_account_id, hardware_type, storage_settings, mode
+    outputs: bundle_id
+  - operation: check-bundle-state
+    inputs: bundle_id, destination_account_id
+    outputs: ready
+  - operation: launch-workspace
+    inputs: bundle_id, directory_id, username, running_mode, encryption, mode
+    outputs: workspace_id
+  - operation: tag-managed-instance
+    inputs: destination_account_id, activation_default_instance_name, tag-*
+    outputs: tagged_instance_ids
+  - operation: apply-ansible-playbook
+    inputs: node_id, playbook managed-workspace.yaml, username
+    outputs: status
+  - operation: apply-ansible-playbook-to-node
+    inputs: node_id, playbook managed-workspace.yaml, username (rerun path)
+    outputs: status

@@ -1,0 +1,80 @@
+# Contract: provision-windows-workspace pipeline
+# Human- and machine-readable summary of name, function, inputs, and outputs.
+name: provision-windows-workspace
+function: Same flow as Linux (image → share → copy → bundle → launch → tag); optionally run PowerShell scripts (e.g. RStudio) after tag.
+modes:
+  verify: Same as Linux; when mode is verify, image/bundle steps run in verify and pipeline uses existing image/bundle.
+  modify: Full provisioning; after tag, if scripts array is non-empty, runs configure-windows-workspace; otherwise succeeds without scripts.
+description: |
+  Same flow as provision-linux-workspace (normalize, image, share, copy, bundle,
+  launch, tag). After tag, if scripts array is non-empty, runs configure-windows-workspace
+  (PowerShell scripts, e.g. RStudio); otherwise pipeline succeeds without scripts.
+
+inputs:
+  required:
+    - destination_account_id
+    - username
+  optional:
+    - source_workspace_id
+    - image_name
+    - workspace_id
+    - hardware_type
+    - storage_settings
+    - directory_id
+    - running_mode
+    - encrypt_root_volume
+    - encrypt_user_volume
+    - encryption_key_alias
+    - tag-user-email
+    - tag-research-group
+    - tag-enclave-id
+    - tag-username
+    - scripts
+    - node_id
+    - destination_workspace_id
+    - source_region
+    - destination_region
+    - mode
+
+outputs:
+  on_success: Pipeline completes; workspace_id; optional configure-windows-workspace result.
+  on_failure: Fail state with error/cause from failing step.
+
+component_operations:
+  - operation: normalize-provision-windows-workspace-input
+    inputs: pipeline_input
+    outputs: normalized
+  - operation: create-ssm-hybrid-activation
+    inputs: mode, source_account_id, username
+    outputs: instance_name
+  - operation: create-workspace-image
+    inputs: mode, workspace_id, image_name
+    outputs: image_id
+  - operation: check-workspace-state
+    inputs: workspace_id
+    outputs: ready
+  - operation: check-image-state
+    inputs: image_id
+    outputs: ready
+  - operation: share-image
+    inputs: image_id, destination_account_id
+    outputs: status
+  - operation: copy-image
+    inputs: image_id, destination_account_id
+    outputs: new_image_id
+  - operation: create-bundle
+    inputs: image_id, hardware_type, storage_settings
+    outputs: bundle_id
+  - operation: check-bundle-state
+    inputs: bundle_id
+    outputs: ready
+  - operation: launch-workspace
+    inputs: bundle_id, directory_id, username, encryption, etc.
+    outputs: workspace_id
+  - operation: tag-managed-instance
+    inputs: activation_default_instance_name, tag-*
+    outputs: tagged_instance_ids
+  - operation: configure-windows-workspace
+    when: scripts non-empty
+    inputs: node_id, scripts, node_name
+    outputs: status

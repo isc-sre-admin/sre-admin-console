@@ -1,0 +1,25 @@
+# Contract: tag-managed-instance operation
+name: tag-managed-instance
+function: Tag SSM managed instances (EndUser, ResearchGroup, EnclaveID, Name); optional single-instance by activation_default_instance_name.
+modes:
+  verify: Checks that there are no untagged managed instances in the region; returns error VerificationFailed with untagged_instance_ids when any found.
+  modify: Adds tags to untagged instances, or to the single instance matching activation_default_instance_name. Returns tagged_instance_ids.
+inputs:
+  required:
+    - operation
+    - destination_account_id
+    - destination_region
+  optional:
+    - tag-user-email
+    - tag-research-group
+    - tag-enclave-id
+    - tag-username
+    - activation_default_instance_name
+outputs:
+  success:
+    - status
+    - tagged_instance_ids
+  error:
+    - status
+    - error
+    - message

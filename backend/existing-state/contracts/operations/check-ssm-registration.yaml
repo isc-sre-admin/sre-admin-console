@@ -1,0 +1,20 @@
+# Contract: check-ssm-registration operation
+name: check-ssm-registration
+function: Check if node_id is registered and Online in SSM for destination account/region.
+modes:
+  default: Read-only. Returns ready true when instance is registered and Online. No mode parameter.
+inputs:
+  required:
+    - operation
+    - node_id
+    - destination_account_id
+  optional:
+    - destination_region
+outputs:
+  success:
+    - status
+    - ready
+  error:
+    - status
+    - error
+    - message

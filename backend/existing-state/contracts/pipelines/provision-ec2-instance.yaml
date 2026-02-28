@@ -1,0 +1,75 @@
+# Contract: provision-ec2-instance pipeline
+# Human- and machine-readable summary of name, function, inputs, and outputs.
+name: provision-ec2-instance
+function: Normalize input; optional security groups; share AMI → copy AMI → launch EC2; optionally domain join and Duo Unix playbook.
+modes:
+  verify: share-ami and copy-ami run in verify; pipeline skips AMI wait and proceeds to launch; launch-ec2-instance verifies existing instance when instance_name/instance_id provided.
+  modify: Shares and copies AMI; waits for AMI available; launches instance; optionally runs managed-instance playbook, domain-join-ec2-instance, and duo-unix playbook. Idempotent by instance_name.
+description: |
+  Normalizes input; optionally creates security groups; shares AMI to destination;
+  copies AMI; waits for AMI available; launches EC2 instance. Optionally runs
+  managed-instance playbook and domain-join-ec2-instance, then duo-unix playbook
+  when duo_unix_secret_name is set.
+
+inputs:
+  required:
+    - mode
+    - destination_account_id
+    - ami_id
+    - copy_name
+    - instance_type
+  optional:
+    - instance_name
+    - storage_settings
+    - tag-resource-group
+    - security_groups
+    - security_group_ids
+    - keypair_name
+    - source_region
+    - destination_region
+    - domain_join_directory_name
+    - domain_join_username
+    - domain_join_password_secret_name
+    - domain_join_computer_ou
+    - domain_join_use_aws_document
+    - duo_unix_secret_name
+    - iam_instance_profile_name
+    - ssm_registration_timeout_seconds
+    - install_dependencies
+
+outputs:
+  on_success: Pipeline completes; instance_id; optional domain join and Duo Unix applied.
+  on_failure: Fail state with error/cause from failing step.
+
+component_operations:
+  - operation: normalize-provision-ec2-instance-input
+    inputs: pipeline_input
+    outputs: normalized
+  - operation: create-security-group
+    when: security_groups present
+    inputs: mode, destination_account_id, security_group_name, ingress_rules, egress_rules
+    outputs: security_group_id
+  - operation: share-ami
+    inputs: mode, ami_id, destination_account_id, source_region
+    outputs: status
+  - operation: copy-ami
+    inputs: mode, ami_id, destination_account_id, copy_name, source_region
+    outputs: new_ami_id
+  - operation: check-ami-state
+    inputs: ami_id, destination_account_id
+    outputs: ready
+  - operation: launch-ec2-instance
+    inputs: image_id, instance_type, storage_settings, tag-resource-group, security_groups, skip_domain_join_in_launch, etc.
+    outputs: instance_id
+  - operation: apply-ansible-playbook
+    when: domain_join_directory_name set
+    inputs: node_id (instance_id), playbook managed-instance.yaml
+    outputs: status
+  - operation: domain-join-ec2-instance
+    when: domain_join_directory_name set
+    inputs: instance_id, domain_join_*, destination_account_id
+    outputs: status
+  - operation: apply-ansible-playbook
+    when: duo_unix_secret_name set
+    inputs: node_id, playbook duo-unix.yaml, secret_name
+    outputs: status

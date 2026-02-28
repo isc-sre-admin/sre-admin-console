@@ -1,0 +1,30 @@
+# Contract: configure-windows-workspace operation
+name: configure-windows-workspace
+function: Run PowerShell scripts on Windows WorkSpace via SSM (e.g. RStudio).
+modes:
+  verify: Uploads scripts and runs wrapper that only downloads and verifies scripts exist on disk; no execution. Returns verified from wrapper output.
+  modify: Downloads and executes each PowerShell script in sequence on the node.
+inputs:
+  required:
+    - operation
+    - mode
+    - destination_account_id
+    - node_id
+    - node_name
+    - scripts
+  optional:
+    - destination_region
+    - source_region
+    - timeout_seconds
+    - installer_url
+    - installer_urls
+outputs:
+  success:
+    - status
+    - command_id
+    - scripts
+    - verified
+  error:
+    - status
+    - error
+    - message

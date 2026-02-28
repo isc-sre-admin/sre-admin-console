@@ -1,0 +1,30 @@
+# Contract: domain-join-ec2-instance operation
+name: domain-join-ec2-instance
+function: Domain join existing EC2 via SSM (realm or AWS document); idempotent.
+modes:
+  verify: Checks that instance exists and is domain joined.
+  modify: Joins instance to domain via SSM (realm join or AWS-JoinDirectoryServiceDomain-V2). Idempotent when already joined.
+inputs:
+  required:
+    - operation
+    - mode
+    - instance_id
+    - destination_account_id
+    - domain_join_directory_name
+  optional:
+    - domain_join_username
+    - domain_join_password_secret_name
+    - domain_join_computer_ou
+    - domain_join_use_aws_document
+    - destination_region
+    - source_region
+    - ssm_registration_timeout_seconds
+    - source_account_id
+outputs:
+  success:
+    - status
+    - verified
+  error:
+    - status
+    - error
+    - message

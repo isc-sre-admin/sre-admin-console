@@ -1,0 +1,22 @@
+# Contract: share-ami operation
+name: share-ami
+function: Share AMI and backing snapshots with destination account (source account Lambda role).
+modes:
+  verify: Checks that AMI and its snapshots are already shared with destination account.
+  modify: Adds destination account to AMI launch permission and to each snapshot createVolumePermission.
+inputs:
+  required:
+    - operation
+    - mode
+    - ami_id
+    - destination_account_id
+  optional:
+    - source_region
+outputs:
+  success:
+    - status
+    - verified
+  error:
+    - status
+    - error
+    - message

@@ -1,0 +1,21 @@
+# Contract: check-image-state operation
+name: check-image-state
+function: Return WorkSpaces image state; used for pipeline polling until AVAILABLE.
+modes:
+  default: Read-only. Returns image state and ready when AVAILABLE. No mode parameter.
+inputs:
+  required:
+    - operation
+    - image_id
+    - destination_account_id
+  optional:
+    - source_region
+outputs:
+  success:
+    - status
+    - ready
+    - state
+  error:
+    - status
+    - error
+    - message

@@ -1,0 +1,28 @@
+# Contract: launch-workspace operation
+name: launch-workspace
+function: Launch WorkSpace in destination account from bundle.
+modes:
+  verify: Checks that launch can be satisfied (bundle exists, etc.); no launch.
+  modify: Launches WorkSpace in destination account from bundle.
+inputs:
+  required:
+    - operation
+    - mode
+    - bundle_id
+    - destination_account_id
+    - username
+    - running_mode
+    - encrypt_root_volume
+    - encrypt_user_volume
+  optional:
+    - directory_id
+    - encryption_key_alias
+    - source_region
+outputs:
+  success:
+    - status
+    - workspace_id
+  error:
+    - status
+    - error
+    - message
