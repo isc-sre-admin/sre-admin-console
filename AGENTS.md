@@ -86,6 +86,18 @@ After the changes are committed, clear the contents of COMMIT_MSG.txt that have 
 You will implement features listed under the ./features folder in order to build 
 the web application. 
 
+Create a new feature branch for each feature. Implement one feature at a time - don't create multiple feature branches simultaneously; instead, complete each feature and generate a PR against the develop branch and wait for the approver
+to approve the PR before proceeding to the next feature. 
+
+## Documentation 
+Update ./README.md to provide useful documentation of the functionality added 
+when changes are made to code. 
+
+## JSON
+
+In general, when JSON files are created or edited, they should be pretty printed with appropriate
+indenting for easy readability. 
+
 # Look and Feel
 
 The user interface should be clean and predominantly rendered in white and light gray so it is not jarring or unpleasant for the end users to look at. It should feel contemporary and well-organized. 
