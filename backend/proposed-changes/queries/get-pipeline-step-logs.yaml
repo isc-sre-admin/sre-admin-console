@@ -1,0 +1,26 @@
+# Contract: get-pipeline-step-logs query
+# Proposed query for stdout, stderr, and downloadContent logs for a pipeline step.
+id: get-pipeline-step-logs
+label: Get pipeline step logs
+function: Return stdout, stderr, and downloadContent (or equivalent) log streams for a step.
+description: |
+  Queries the backend (e.g. CloudWatch Logs in a known log group for the pipeline
+  or Lambda invocations) for a given execution and step. The frontend uses this
+  when the user expands a step to show input/output and, for failed steps, to
+  show the root cause. The backend may expose pre-aggregated logs (stdout, stderr,
+  downloadContent) so the console does not need direct CloudWatch query access.
+
+inputs:
+  required:
+    - execution_id
+    - execution_arn
+    - step_id
+  optional: []
+
+outputs:
+  success:
+    step_id: string
+    stdout: string
+    stderr: string
+    download_content: string
+    error_message: string | null

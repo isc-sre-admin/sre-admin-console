@@ -1,0 +1,32 @@
+# Contract: list-pipeline-executions query
+# Proposed query for the frontend to list pipeline executions (active and history).
+id: list-pipeline-executions
+label: List pipeline executions
+function: Return executions for a pipeline (and optionally date range) for the Pipeline activity tables.
+description: |
+  Queries the backend (e.g. Step Functions ListExecutions or an abstraction over it)
+  for executions of a given state machine (pipeline). The frontend uses this to
+  populate "Currently executing" and "Execution history" with real data. Supports
+  filtering by status (RUNNING, SUCCEEDED, FAILED, etc.) and optional start/end
+  date for history.
+
+inputs:
+  required:
+    - pipeline_id
+  optional:
+    - status_filter
+    - start_date
+    - end_date
+    - max_results
+
+outputs:
+  success:
+    list:
+      - execution_id
+      - execution_arn
+      - name
+      - status
+      - started_at
+      - stopped_at
+      - enclave_name
+      - label
