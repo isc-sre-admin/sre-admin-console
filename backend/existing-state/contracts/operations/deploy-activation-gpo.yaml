@@ -1,5 +1,6 @@
 # Contract: deploy-activation-gpo operation
-name: deploy-activation-gpo
+id: deploy-activation-gpo
+label: Deploy Activation GPO
 function: Create GPO to run SSM hybrid activation script at startup on Windows WorkSpaces.
 modes:
   verify: Runs OU guardrail (rejects default Computers OU or domain root); with instance_id and ou_path can report computer_count_in_ou and GPO status. No GPO creation.

@@ -37,12 +37,14 @@ SAMPLE_ENCLAVES: tuple[EnclaveOption, ...] = (
 SAMPLE_ACTIVE_EXECUTIONS = [
     {
         "name": "provision-ad-connector",
+        "label": "Provision AD Connector",
         "enclave": "sre-dev-enclave-01",
         "started_at": "6 minutes ago",
         "status": "Running",
     },
     {
         "name": "provision-linux-workspace",
+        "label": "Provision Linux Workspace",
         "enclave": "sre-research-enclave-02",
         "started_at": "18 minutes ago",
         "status": "Waiting for workspace registration",
@@ -52,18 +54,21 @@ SAMPLE_ACTIVE_EXECUTIONS = [
 SAMPLE_RECENT_EXECUTIONS = [
     {
         "name": "provision-windows-workspace",
+        "label": "Provision Windows Workspace",
         "enclave": "sre-research-enclave-01",
         "completed_at": "Today, 09:42 UTC",
         "status": "Succeeded",
     },
     {
         "name": "provision-ec2-instance",
+        "label": "Provision EC2 Instance",
         "enclave": "sre-research-enclave-03",
         "completed_at": "Today, 08:17 UTC",
         "status": "Failed",
     },
     {
         "name": "provision-ad-connector",
+        "label": "Provision AD Connector",
         "enclave": "sre-dev-enclave-01",
         "completed_at": "Yesterday, 20:06 UTC",
         "status": "Succeeded",
@@ -88,18 +93,18 @@ def _start_pipeline_execution(pipeline_name: str, payload: dict[str, Any]) -> di
 
 def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], enclave_name: str) -> None:
     started_executions = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
-    started_executions.insert(
-        0,
-        {
-            "execution_id": execution["execution_id"],
-            "execution_arn": execution["execution_arn"],
-            "name": execution["name"],
-            "status": execution["status"],
-            "enclave": enclave_name,
-            "started_at": execution["started_at_relative"],
-            "started_at_full": execution["started_at"],
-        },
-    )
+    record = {
+        "execution_id": execution["execution_id"],
+        "execution_arn": execution["execution_arn"],
+        "name": execution["name"],
+        "status": execution["status"],
+        "enclave": enclave_name,
+        "started_at": execution["started_at_relative"],
+        "started_at_full": execution["started_at"],
+    }
+    if "label" in execution:
+        record["label"] = execution["label"]
+    started_executions.insert(0, record)
     request.session[SESSION_STARTED_EXECUTIONS_KEY] = started_executions[:10]
 
 
@@ -124,14 +129,15 @@ def start_pipeline_execution(request: HttpRequest, pipeline_name: str) -> HttpRe
     """Render and process the generic start-pipeline execution form."""
     contract = get_pipeline_contract(pipeline_name)
     if contract is None:
-        raise Http404("Unknown pipeline name.")
+        raise Http404("Unknown pipeline.")
 
     started_execution: dict[str, Any] | None = None
     form = PipelineStartForm(request.POST or None, contract=contract, enclaves=SAMPLE_ENCLAVES)
     if request.method == "POST":
         if form.is_valid():
             payload = form.build_pipeline_payload()
-            started_execution = _start_pipeline_execution(contract.name, payload)
+            started_execution = _start_pipeline_execution(contract.id, payload)
+            started_execution["label"] = contract.label
             _save_execution_to_session(request, started_execution, form.cleaned_data["enclave_name"])
             form = PipelineStartForm(contract=contract, enclaves=SAMPLE_ENCLAVES, initial={"mode": "modify"})
         else:

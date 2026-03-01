@@ -1,5 +1,6 @@
 # Contract: check-workspace-state operation
-name: check-workspace-state
+id: check-workspace-state
+label: Check Workspace State
 function: Return workspace state; start if STOPPED; used to poll until AVAILABLE.
 modes:
   default: Returns workspace state; starts workspace if STOPPED. Used to poll until AVAILABLE. No mode parameter.

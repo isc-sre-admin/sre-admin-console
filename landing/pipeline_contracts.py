@@ -15,7 +15,8 @@ from django.conf import settings
 class PipelineContract:
     """A pipeline contract loaded from backend YAML files."""
 
-    name: str
+    id: str
+    label: str
     function: str
     description: str
     required_inputs: tuple[str, ...]
@@ -25,7 +26,7 @@ class PipelineContract:
     @property
     def display_name(self) -> str:
         """Return a human-readable name for UI labels."""
-        return self.name.replace("-", " ").title()
+        return self.label
 
     @property
     def all_inputs(self) -> tuple[str, ...]:
@@ -50,8 +51,14 @@ def _read_pipeline_contract(contract_path: Path) -> PipelineContract:
     required_inputs = _coerce_input_names(raw_inputs.get("required"))
     optional_inputs = _coerce_input_names(raw_inputs.get("optional"))
 
+    contract_id = str(raw_data.get("id", raw_data.get("name", contract_path.stem)))
+    label = str(raw_data.get("label", "")).strip()
+    if not label:
+        # Fallback: derive from id (hyphens to spaces, title case)
+        label = contract_id.replace("-", " ").title()
     return PipelineContract(
-        name=str(raw_data.get("name", contract_path.stem)),
+        id=contract_id,
+        label=label,
         function=str(raw_data.get("function", "")).strip(),
         description=str(raw_data.get("description", "")).strip(),
         required_inputs=required_inputs,
@@ -67,12 +74,12 @@ def list_pipeline_contracts() -> tuple[PipelineContract, ...]:
         _read_pipeline_contract(contract_path)
         for contract_path in sorted(PIPELINE_CONTRACTS_DIR.glob("*.yaml"))
     ]
-    return tuple(sorted(contracts, key=lambda contract: contract.name))
+    return tuple(sorted(contracts, key=lambda contract: contract.id))
 
 
-def get_pipeline_contract(pipeline_name: str) -> PipelineContract | None:
-    """Return a single pipeline contract by name."""
+def get_pipeline_contract(pipeline_id: str) -> PipelineContract | None:
+    """Return a single pipeline contract by id."""
     for contract in list_pipeline_contracts():
-        if contract.name == pipeline_name:
+        if contract.id == pipeline_id:
             return contract
     return None

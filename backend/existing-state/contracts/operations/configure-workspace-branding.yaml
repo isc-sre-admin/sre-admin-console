@@ -1,5 +1,6 @@
 # Contract: configure-workspace-branding operation
-name: configure-workspace-branding
+id: configure-workspace-branding
+label: Configure Workspace Branding
 function: Deploy Penn client branding (logo, support link) to WorkSpaces directory.
 modes:
   verify: Calls describe_client_branding; returns verified true if at least one device type has branding.

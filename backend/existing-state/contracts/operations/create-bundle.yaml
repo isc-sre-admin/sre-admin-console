@@ -1,5 +1,6 @@
 # Contract: create-bundle operation
-name: create-bundle
+id: create-bundle
+label: Create Bundle
 function: Create WorkSpaces bundle from image in destination account.
 modes:
   verify: Checks that a bundle for the image exists in destination; no creation.

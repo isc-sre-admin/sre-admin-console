@@ -1,5 +1,6 @@
 # Contract: apply-ansible-playbook operation
-name: apply-ansible-playbook
+id: apply-ansible-playbook
+label: Apply Ansible Playbook
 function: Deploy Ansible playbook to an EC2/SSM managed node via AWS-ApplyAnsiblePlaybooks.
 modes:
   verify: Assumes verifier role; runs SSM document in Ansible check mode (dry run). No changes on the instance; returns success when dry run completes without errors.

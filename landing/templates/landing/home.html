@@ -130,7 +130,7 @@
             <tbody>
               {% for execution in active_executions %}
                 <tr>
-                  <td>{{ execution.name }}</td>
+                  <td>{{ execution.label|default:execution.name }}</td>
                   <td>{{ execution.enclave }}</td>
                   <td>{{ execution.started_at }}</td>
                   <td><span class="badge status-running">{{ execution.status }}</span></td>
@@ -187,7 +187,7 @@
             <tbody>
               {% for execution in recent_executions %}
                 <tr>
-                  <td>{{ execution.name }}</td>
+                  <td>{{ execution.label|default:execution.name }}</td>
                   <td>{{ execution.enclave }}</td>
                   <td>{{ execution.completed_at }}</td>
                   <td>

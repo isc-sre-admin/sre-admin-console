@@ -1,5 +1,6 @@
 # Contract: create-ad-group operation
-name: create-ad-group
+id: create-ad-group
+label: Create AD Group
 function: Create AD group in AWS Managed Microsoft AD (Directory Service Data API).
 modes:
   verify: Checks that the group exists (find_group); returns verified.

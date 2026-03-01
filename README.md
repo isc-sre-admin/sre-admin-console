@@ -34,11 +34,11 @@ Backend start-execution wiring is intentionally stubbed for now; the UI and payl
 From `/workspace`:
 
 1. Activate the virtual environment:
-   - `source .venv/bin/activate`
+  - `source .venv/bin/activate`
 2. Run migrations (if needed):
-   - `python manage.py migrate`
+  - `python manage.py migrate`
 3. Start the dev server:
-   - `python manage.py runserver 0.0.0.0:8000`
+  - `python manage.py runserver 0.0.0.0:8000`
 
 ## Quality checks
 
@@ -46,3 +46,4 @@ From `/workspace`:
 - Run linting: `ruff check .`
 - Run SAST: `bandit -r . -c pyproject.toml`
 - Run Django checks: `python manage.py check`
+

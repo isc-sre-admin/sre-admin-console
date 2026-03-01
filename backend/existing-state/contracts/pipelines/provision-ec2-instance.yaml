@@ -1,6 +1,7 @@
 # Contract: provision-ec2-instance pipeline
 # Human- and machine-readable summary of name, function, inputs, and outputs.
-name: provision-ec2-instance
+id: provision-ec2-instance
+label: Provision EC2 Instance
 function: Normalize input; optional security groups; share AMI → copy AMI → launch EC2; optionally domain join and Duo Unix playbook.
 modes:
   verify: share-ami and copy-ami run in verify; pipeline skips AMI wait and proceeds to launch; launch-ec2-instance verifies existing instance when instance_name/instance_id provided.

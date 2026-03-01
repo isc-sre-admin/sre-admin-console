@@ -1,6 +1,7 @@
 # Contract: provision-windows-workspace pipeline
 # Human- and machine-readable summary of name, function, inputs, and outputs.
-name: provision-windows-workspace
+id: provision-windows-workspace
+label: Provision Windows Workspace
 function: Same flow as Linux (image → share → copy → bundle → launch → tag); optionally run PowerShell scripts (e.g. RStudio) after tag.
 modes:
   verify: Same as Linux; when mode is verify, image/bundle steps run in verify and pipeline uses existing image/bundle.

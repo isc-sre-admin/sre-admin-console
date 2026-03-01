@@ -1,5 +1,6 @@
 # Contract: launch-workspace operation
-name: launch-workspace
+id: launch-workspace
+label: Launch Workspace
 function: Launch WorkSpace in destination account from bundle.
 modes:
   verify: Checks that launch can be satisfied (bundle exists, etc.); no launch.

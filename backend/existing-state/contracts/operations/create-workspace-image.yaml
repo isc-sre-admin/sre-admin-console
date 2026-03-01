@@ -1,5 +1,6 @@
 # Contract: create-workspace-image operation
-name: create-workspace-image
+id: create-workspace-image
+label: Create Workspace Image
 function: Create WorkSpace image from existing WorkSpace; workspace must be AVAILABLE in modify.
 modes:
   verify: Checks that an image with image_name exists in destination account. Returns verified true and image_id if found; no image_id when not found (pipeline branches to create-from-workspace).

@@ -1,5 +1,6 @@
 # Contract: create-ssm-hybrid-activation operation
-name: create-ssm-hybrid-activation
+id: create-ssm-hybrid-activation
+label: Create SSM Hybrid Activation
 function: Create or verify SSM hybrid activation; idempotent; stores activation in Secrets Manager.
 modes:
   verify: Checks for active activation with available capacity; returns verified true when found. Returns error VerificationFailed when none.

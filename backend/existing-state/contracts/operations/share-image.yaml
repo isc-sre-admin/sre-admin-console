@@ -1,5 +1,6 @@
 # Contract: share-image operation
-name: share-image
+id: share-image
+label: Share Image
 function: Share WorkSpaces image with destination account.
 modes:
   verify: Checks that image is shared with destination; no change.

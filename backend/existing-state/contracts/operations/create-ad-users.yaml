@@ -1,5 +1,6 @@
 # Contract: create-ad-users operation
-name: create-ad-users
+id: create-ad-users
+label: Create AD Users
 function: Create AD groups and users; store passwords in Secrets Manager; idempotent.
 modes:
   verify: For each group checks existence; for each user checks existence (describe_user). Returns groups_would_be_created, users_already_exist, etc.

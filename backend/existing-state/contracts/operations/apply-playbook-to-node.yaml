@@ -1,5 +1,6 @@
 # Contract: apply-playbook-to-node operation
-name: apply-playbook-to-node
+id: apply-playbook-to-node
+label: Apply Playbook to Node
 function: Apply playbook to a specific SSM node; used in workspace pipeline rerun path.
 modes:
   verify: Runs playbook in Ansible check mode (dry run); no changes on the node.

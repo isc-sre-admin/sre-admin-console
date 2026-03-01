@@ -1,6 +1,7 @@
 # Contract: provision-ad-connector pipeline
 # Human- and machine-readable summary of name, function, inputs, and outputs.
-name: provision-ad-connector
+id: provision-ad-connector
+label: Provision AD Connector
 function: Deploy AD Connector, RADIUS/MFA, Duo Auth Proxy, register directory, branding, SSM hybrid activation.
 modes:
   verify: Each step runs in verify mode where supported; no resources created or changed; validates that AD Connector, RADIUS secret, MFA, directory registration, branding, and activation already exist and match.

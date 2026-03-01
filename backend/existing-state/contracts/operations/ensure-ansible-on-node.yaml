@@ -1,5 +1,6 @@
 # Contract: ensure-ansible-on-node operation
-name: ensure-ansible-on-node
+id: ensure-ansible-on-node
+label: Ensure Ansible on Node
 function: Ensure Ansible is installed on SSM node (e.g. before playbook on existing workspace).
 modes:
   default: Runs SSM command to install Ansible and dependencies on the node if needed. No mode parameter.

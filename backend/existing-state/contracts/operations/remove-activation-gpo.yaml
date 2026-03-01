@@ -1,5 +1,6 @@
 # Contract: remove-activation-gpo operation
-name: remove-activation-gpo
+id: remove-activation-gpo
+label: Remove Activation GPO
 function: Unlink and optionally delete GPO from deploy-activation-gpo (backout).
 modes:
   verify: Checks state; no unlink or delete.

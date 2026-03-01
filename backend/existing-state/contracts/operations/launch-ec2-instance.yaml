@@ -1,5 +1,6 @@
 # Contract: launch-ec2-instance operation
-name: launch-ec2-instance
+id: launch-ec2-instance
+label: Launch EC2 Instance
 function: Launch EC2 instance with AMI, storage, security groups, tags; idempotent by instance_name.
 modes:
   verify: When instance_id or instance_name provided, verifies that instance exists. With image_id can find existing instance launched from that AMI.

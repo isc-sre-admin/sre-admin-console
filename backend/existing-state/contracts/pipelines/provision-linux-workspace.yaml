@@ -1,6 +1,7 @@
 # Contract: provision-linux-workspace pipeline
 # Human- and machine-readable summary of name, function, inputs, and outputs.
-name: provision-linux-workspace
+id: provision-linux-workspace
+label: Provision Linux Workspace
 function: Normalize input; image → share → copy → bundle → launch Linux WorkSpace → tag → managed-workspace playbook; supports playbook-only rerun with node_id.
 modes:
   verify: When mode is verify (e.g. no source_workspace_id), create-workspace-image, copy-image, and create-bundle run in verify mode; pipeline skips image/bundle wait loops and launches using existing image/bundle.

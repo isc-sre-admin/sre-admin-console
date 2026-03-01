@@ -1,5 +1,6 @@
 # Contract: check-ami-state operation
-name: check-ami-state
+id: check-ami-state
+label: Check AMI State
 function: Check whether AMI in destination account is available; used for pipeline polling.
 modes:
   default: Read-only. Returns ready true when AMI state is available. No mode parameter.

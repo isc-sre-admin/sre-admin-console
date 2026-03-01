@@ -1,5 +1,6 @@
 # Contract: create-ad-connector operation
-name: create-ad-connector
+id: create-ad-connector
+label: Create AD Connector
 function: Deploy AD Connector in destination account; password from Secrets Manager in source.
 modes:
   verify: Validates inputs, assumes destination role; checks that AD Connector with directory_dns_name exists. Returns verified true and directory_id if found; no secret lookup.

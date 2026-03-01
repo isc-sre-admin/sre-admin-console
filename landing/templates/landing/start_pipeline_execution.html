@@ -1,6 +1,6 @@
 {% extends "landing/base.html" %}
 
-{% block title %}Start {{ contract.name }} | SRE Operations Console{% endblock title %}
+{% block title %}Start {{ contract.label }} | SRE Operations Console{% endblock title %}
 
 {% block content %}
   <section class="mb-4">
@@ -17,10 +17,10 @@
         <div class="d-flex flex-wrap gap-2">
           {% for available_contract in available_contracts %}
             <a
-              class="btn btn-sm {% if available_contract.name == contract.name %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-              href="{% url 'landing:start-pipeline-execution' pipeline_name=available_contract.name %}"
+              class="btn btn-sm {% if available_contract.id == contract.id %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+              href="{% url 'landing:start-pipeline-execution' pipeline_name=available_contract.id %}"
             >
-              {{ available_contract.name }}
+              {{ available_contract.label }}
             </a>
           {% endfor %}
         </div>
@@ -33,7 +33,7 @@
       <div class="alert alert-success mb-0" role="status" aria-live="polite">
         <h3 class="h5 mb-2">Pipeline execution started</h3>
         <p class="mb-2">
-          The execution request for <code>{{ started_execution.name }}</code> was accepted at
+          The execution request for <code>{{ started_execution.label|default:started_execution.name }}</code> was accepted at
           {{ started_execution.started_at }}.
         </p>
         <p class="mb-2">

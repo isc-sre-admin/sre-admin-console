@@ -1,5 +1,6 @@
 # Contract: assign-domain-name operation
-name: assign-domain-name
+id: assign-domain-name
+label: Assign Domain Name
 function: Ensure Route 53 A record (subdomain in source account hosted zone) points to EC2 instance IP in destination account.
 modes:
   verify: Checks that A record exists and points to the instance IP; no changes.
