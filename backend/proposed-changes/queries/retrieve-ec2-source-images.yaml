@@ -1,0 +1,19 @@
+# Contract: retrieve-ec2-source-images query
+# Proposed query for the frontend to populate the AMI id dropdown on start pipeline pages.
+id: retrieve-ec2-source-images
+label: Retrieve EC2 source images
+function: Return a list of Amazon Machine Images available in the given region for use as EC2 source images (e.g. for provision-ec2-instance).
+description: |
+  Queries the backend for AMIs in the source region. Each item includes an identifier
+  (e.g. ami-091898c3a03efa550) and a name (e.g. SRE-Rocky9-Base-CUI-2026-02-27)
+  for display in the console.
+
+inputs:
+  required:
+    - source_region
+
+outputs:
+  success:
+    list:
+      - ami_id
+      - ami_name

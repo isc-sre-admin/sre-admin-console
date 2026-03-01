@@ -25,8 +25,8 @@
               <li>Enable MFA and register directory</li>
               <li>Configure branding and hybrid activation</li>
             </ul>
-            <a class="btn btn-primary w-100" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-ad-connector' }">
-              Run `provision-ad-connector`
+            <a class="btn btn-primary w-100" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-ad-connector' %}">
+              Run Initial Setup
             </a>
           </div>
         </article>
@@ -39,13 +39,13 @@
               Launch Windows/Linux WorkSpaces or EC2 instances in existing enclaves with AD user and research group context.
             </p>
             <div class="d-grid gap-2">
-              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-linux-workspace' %}">
+              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-linux-workspace' %}">
                 Provision Linux WorkSpace
               </a>
-              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-windows-workspace' %}">
+              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-windows-workspace' %}">
                 Provision Windows WorkSpace
               </a>
-              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_name='provision-ec2-instance' %}">
+              <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-ec2-instance' %}">
                 Provision EC2 Instance
               </a>
             </div>

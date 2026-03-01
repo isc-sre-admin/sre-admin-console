@@ -16,7 +16,7 @@ The page currently shows sample pipeline data and UI controls that are ready to 
 
 ## Start pipeline execution
 
-The route `/pipelines/<pipeline_name>/start/` renders a shared start-execution screen for all backend pipelines:
+The route `/pipelines/<pipeline_id>/start/` renders a shared start-execution screen for all backend pipelines:
 
 - Inputs are generated dynamically from YAML pipeline contracts under `backend/existing-state/contracts/pipelines`.
 - Required and optional inputs are shown as separate validated fields.

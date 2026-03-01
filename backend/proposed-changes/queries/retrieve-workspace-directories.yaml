@@ -1,0 +1,19 @@
+# Contract: retrieve-workspace-directories query
+# Proposed query for the frontend to populate the Directory id dropdown on start pipeline pages.
+id: retrieve-workspace-directories
+label: Retrieve workspace directories
+function: Return a list of WorkSpaces directories (e.g. AD Connector directories) in the destination account for use when launching workspaces.
+description: |
+  Queries the backend for directories available in the destination account. Each
+  item includes an id (e.g. d-906603250f) and a label (e.g. testsre.local) for
+  the console dropdown.
+
+inputs:
+  required:
+    - destination_account_id
+
+outputs:
+  success:
+    list:
+      - id
+      - label

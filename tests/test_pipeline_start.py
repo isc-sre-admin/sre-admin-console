@@ -7,7 +7,7 @@ def test_start_pipeline_page_renders_contract_fields(client) -> None:
     response = client.get(
         reverse(
             "landing:start-pipeline-execution",
-            kwargs={"pipeline_name": "provision-ad-connector"},
+            kwargs={"pipeline_id": "provision-ad-connector"},
         )
     )
 
@@ -25,7 +25,7 @@ def test_start_pipeline_page_renders_different_fields_for_ec2_pipeline(client) -
     response = client.get(
         reverse(
             "landing:start-pipeline-execution",
-            kwargs={"pipeline_name": "provision-ec2-instance"},
+            kwargs={"pipeline_id": "provision-ec2-instance"},
         )
     )
 
@@ -42,7 +42,7 @@ def test_start_pipeline_shows_required_field_errors(client) -> None:
     response = client.post(
         reverse(
             "landing:start-pipeline-execution",
-            kwargs={"pipeline_name": "provision-ad-connector"},
+            kwargs={"pipeline_id": "provision-ad-connector"},
         ),
         data={"enclave": "111111111111"},
     )
@@ -58,7 +58,7 @@ def test_start_pipeline_success_persists_execution_for_landing_and_detail_views(
     start_response = client.post(
         reverse(
             "landing:start-pipeline-execution",
-            kwargs={"pipeline_name": "provision-ad-connector"},
+            kwargs={"pipeline_id": "provision-ad-connector"},
         ),
         data={
             "enclave": "444444444444",
@@ -99,7 +99,7 @@ def test_unknown_pipeline_returns_404(client) -> None:
     response = client.get(
         reverse(
             "landing:start-pipeline-execution",
-            kwargs={"pipeline_name": "missing-pipeline"},
+            kwargs={"pipeline_id": "missing-pipeline"},
         )
     )
     assert response.status_code == 404

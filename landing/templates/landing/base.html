@@ -16,12 +16,14 @@
   <body class="app-shell">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="border-bottom bg-white">
-      <div class="container py-3 d-flex align-items-center justify-content-between">
-        <div>
-          <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
-          <h1 class="h4 mb-0">SRE Operations Console</h1>
-        </div>
-        <span class="badge rounded-pill text-bg-light">Prototype</span>
+      <div class="container py-3">
+        <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center justify-content-between text-decoration-none text-dark">
+          <div>
+            <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
+            <h1 class="h4 mb-0">SRE Operations Console</h1>
+          </div>
+          <span class="badge rounded-pill text-bg-light">Prototype</span>
+        </a>
       </div>
     </header>
     <main id="main-content" class="py-4">

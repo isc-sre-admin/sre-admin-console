@@ -1,0 +1,20 @@
+# Contract: retrieve-workspace-source-workspaces query
+# Proposed query for the frontend to populate the Source workspace id dropdown on start pipeline pages.
+id: retrieve-workspace-source-workspaces
+label: Retrieve workspace source workspaces
+function: Return a list of WorkSpaces in the given region that can be used as a source for creating a workspace image (e.g. for provision-linux-workspace, provision-windows-workspace).
+description: |
+  Queries the backend for WorkSpaces in the source region that are available as
+  image sources. Each item includes a workspace identifier (e.g. ws-xxxxxxxxx)
+  and a display name for the console.
+
+inputs:
+  required:
+    - source_region: us-east-1 or us-west-2
+    - os_type: LINUX or WINDOWS (case-insensitive)
+
+outputs:
+  success:
+    list:
+      - workspace_id
+      - workspace_name

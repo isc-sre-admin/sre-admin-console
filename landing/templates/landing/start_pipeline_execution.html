@@ -18,7 +18,7 @@
           {% for available_contract in available_contracts %}
             <a
               class="btn btn-sm {% if available_contract.id == contract.id %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-              href="{% url 'landing:start-pipeline-execution' pipeline_name=available_contract.id %}"
+              href="{% url 'landing:start-pipeline-execution' pipeline_id=available_contract.id %}"
             >
               {{ available_contract.label }}
             </a>
@@ -78,26 +78,85 @@
           {% csrf_token %}
           {% for field in form %}
             <div class="mb-3">
-              <label class="form-label" for="{{ field.id_for_label }}">
-                {{ field.label }}
-                {% if field.field.required %}
-                  <span class="text-danger" aria-hidden="true">*</span>
-                  <span class="visually-hidden">(required)</span>
-                {% endif %}
-              </label>
-
-              {% if field.name == "enclave" %}
-                <label class="form-label small text-secondary" for="enclave-typeahead">Typeahead filter</label>
-                <input
-                  id="enclave-typeahead"
-                  class="form-control form-control-sm mb-2"
-                  type="search"
-                  placeholder="Type to filter enclave options"
-                  autocomplete="off"
-                />
+              {% if field.name != "encrypt_root_volume" and field.name != "encrypt_user_volume" and field.name != "running_mode" %}
+                <label class="form-label" for="{% if field.name == 'enclave' %}enclave-combobox-input{% else %}{{ field.id_for_label }}{% endif %}">
+                  {{ field.label }}
+                  {% if field.field.required %}
+                    <span class="text-danger" aria-hidden="true">*</span>
+                    <span class="visually-hidden">(required)</span>
+                  {% endif %}
+                </label>
               {% endif %}
 
-              {{ field }}
+              {% if field.name == "enclave" %}
+                <div class="enclave-combobox" data-enclave-combobox>
+                  {{ field }}
+                  <input
+                    type="text"
+                    class="form-control enclave-combobox-input"
+                    id="enclave-combobox-input"
+                    role="combobox"
+                    aria-expanded="false"
+                    aria-controls="enclave-listbox"
+                    aria-autocomplete="list"
+                    aria-haspopup="listbox"
+                    aria-label="Research group / enclave"
+                    placeholder="Type to search research group or enclave"
+                    autocomplete="off"
+                  />
+                  <ul
+                    id="enclave-listbox"
+                    class="enclave-combobox-listbox"
+                    role="listbox"
+                    aria-label="Research group / enclave options"
+                    hidden
+                  >
+                  </ul>
+                </div>
+              {% elif field.name == "security_groups" %}
+                <div id="security-groups-editor" class="security-groups-editor border rounded p-3 bg-light">
+                  <div class="mb-3">
+                    <label class="form-label" for="sg-name">Security group name</label>
+                    <input type="text" id="sg-name" class="form-control" value="enclave_instances_sg" autocomplete="off" aria-describedby="sg-name-help" />
+                    <div id="sg-name-help" class="form-text">Name for the security group to create or use.</div>
+                  </div>
+                  <div class="mb-3">
+                    <span class="form-label d-block">Ingress rules</span>
+                    <div id="ingress-rules-list" class="security-groups-rules-list"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-ingress-rule" aria-label="Add ingress rule">+ Add ingress rule</button>
+                  </div>
+                  <div class="mb-0">
+                    <span class="form-label d-block">Egress rules</span>
+                    <div id="egress-rules-list" class="security-groups-rules-list"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-egress-rule" aria-label="Add egress rule">+ Add egress rule</button>
+                  </div>
+                  {{ field }}
+                </div>
+              {% elif field.name == "running_mode" %}
+                <label class="form-label d-block mb-2">
+                  {{ field.label }}
+                  {% if field.field.required %}
+                    <span class="text-danger" aria-hidden="true">*</span>
+                    <span class="visually-hidden">(required)</span>
+                  {% endif %}
+                </label>
+                <div class="btn-group running-mode-btn-group" role="group" aria-label="Running mode">
+                  {{ field }}
+                </div>
+              {% elif field.name == "encrypt_root_volume" or field.name == "encrypt_user_volume" %}
+                <div class="form-check mt-0">
+                  {{ field }}
+                  <label class="form-check-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                    {% if field.field.required %}
+                      <span class="text-danger" aria-hidden="true">*</span>
+                      <span class="visually-hidden">(required)</span>
+                    {% endif %}
+                  </label>
+                </div>
+              {% else %}
+                {{ field }}
+              {% endif %}
 
               {% if field.help_text %}
                 <div class="form-text">{{ field.help_text }}</div>
@@ -124,26 +183,239 @@
 
   <script>
     (() => {
-      const filterInput = document.getElementById("enclave-typeahead");
-      const enclaveSelect = document.getElementById("id_enclave");
-      if (!filterInput || !enclaveSelect) {
+      const comboboxInput = document.getElementById("enclave-combobox-input");
+      const listbox = document.getElementById("enclave-listbox");
+      const select = document.getElementById("id_enclave");
+      if (!comboboxInput || !listbox || !select) {
         return;
       }
 
-      filterInput.addEventListener("input", () => {
-        const filterTerm = filterInput.value.trim().toLowerCase();
-        for (const option of enclaveSelect.options) {
-          if (!option.value) {
-            continue;
-          }
-          option.hidden = filterTerm.length > 0 && !option.textContent.toLowerCase().includes(filterTerm);
-        }
+      select.setAttribute("tabindex", "-1");
+      const options = Array.from(select.options).filter((opt) => opt.value !== "");
 
-        const selectedOption = enclaveSelect.options[enclaveSelect.selectedIndex];
-        if (selectedOption?.hidden) {
-          enclaveSelect.value = "";
+      function getFilteredOptions(term) {
+        const t = term.trim().toLowerCase();
+        if (t === "") return options;
+        return options.filter((opt) => opt.textContent.trim().toLowerCase().includes(t));
+      }
+
+      function renderListbox(filtered) {
+        listbox.innerHTML = "";
+        listbox.removeAttribute("hidden");
+        filtered.forEach((opt, i) => {
+          const li = document.createElement("li");
+          li.id = "enclave-option-" + i;
+          li.className = "enclave-combobox-option";
+          li.setAttribute("role", "option");
+          li.setAttribute("aria-selected", select.value === opt.value);
+          li.textContent = opt.textContent.trim();
+          li.dataset.value = opt.value;
+          li.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            choose(opt.value, opt.textContent.trim());
+          });
+          listbox.appendChild(li);
+        });
+        comboboxInput.setAttribute("aria-expanded", "true");
+        activeIndex = -1;
+      }
+
+      function choose(value, text) {
+        select.value = value;
+        comboboxInput.value = text;
+        listbox.setAttribute("hidden", "");
+        comboboxInput.setAttribute("aria-expanded", "false");
+        comboboxInput.removeAttribute("aria-activedescendant");
+        listbox.innerHTML = "";
+      }
+
+      function syncInputFromSelect() {
+        const selected = options.find((opt) => opt.value === select.value);
+        comboboxInput.value = selected ? selected.textContent.trim() : "";
+      }
+
+      let activeIndex = -1;
+      let listboxOptions = () => listbox.querySelectorAll(".enclave-combobox-option");
+
+      comboboxInput.addEventListener("input", () => {
+        const term = comboboxInput.value;
+        if (term.trim() === "") {
+          select.value = "";
+        }
+        const filtered = getFilteredOptions(term);
+        if (filtered.length === 0 && term.trim() !== "") {
+          select.value = "";
+        }
+        renderListbox(filtered.length ? filtered : options);
+      });
+
+      comboboxInput.addEventListener("focus", () => {
+        const filtered = getFilteredOptions(comboboxInput.value);
+        renderListbox(filtered.length ? filtered : options);
+      });
+
+      comboboxInput.addEventListener("blur", () => {
+        setTimeout(() => {
+          listbox.setAttribute("hidden", "");
+          comboboxInput.setAttribute("aria-expanded", "false");
+          comboboxInput.removeAttribute("aria-activedescendant");
+          listbox.innerHTML = "";
+          syncInputFromSelect();
+        }, 150);
+      });
+
+      function setActiveOption(index) {
+        const opts = listboxOptions();
+        opts.forEach((o) => o.classList.remove("enclave-combobox-option-active"));
+        activeIndex = index;
+        if (activeIndex >= 0 && opts[activeIndex]) {
+          opts[activeIndex].classList.add("enclave-combobox-option-active");
+          opts[activeIndex].scrollIntoView({ block: "nearest" });
+          comboboxInput.setAttribute("aria-activedescendant", opts[activeIndex].id);
+        } else {
+          comboboxInput.removeAttribute("aria-activedescendant");
+        }
+      }
+
+      comboboxInput.addEventListener("keydown", (e) => {
+        const opts = listboxOptions();
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setActiveOption(Math.min(activeIndex + 1, opts.length - 1));
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setActiveOption(Math.max(activeIndex - 1, -1));
+          return;
+        }
+        if (e.key === "Enter" && activeIndex >= 0 && opts[activeIndex]) {
+          e.preventDefault();
+          choose(opts[activeIndex].dataset.value, opts[activeIndex].textContent.trim());
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          listbox.setAttribute("hidden", "");
+          comboboxInput.setAttribute("aria-expanded", "false");
+          comboboxInput.removeAttribute("aria-activedescendant");
+          listbox.innerHTML = "";
+          activeIndex = -1;
         }
       });
+
+      syncInputFromSelect();
+    })();
+
+    (() => {
+      const editor = document.getElementById("security-groups-editor");
+      const hidden = document.getElementById("id_security_groups");
+      if (!editor || !hidden) return;
+
+      const sgName = document.getElementById("sg-name");
+      const ingressList = document.getElementById("ingress-rules-list");
+      const egressList = document.getElementById("egress-rules-list");
+      const addIngressBtn = document.getElementById("add-ingress-rule");
+      const addEgressBtn = document.getElementById("add-egress-rule");
+
+      function parseCidr(cidr) {
+        if (typeof cidr === "string") return cidr.trim() ? [cidr.trim()] : [];
+        return Array.isArray(cidr) ? cidr.map(String).filter(Boolean) : [];
+      }
+
+      function ruleToCidrInput(cidrBlocks) {
+        const arr = parseCidr(cidrBlocks);
+        return arr.join(", ");
+      }
+
+      function getData() {
+        let data;
+        try {
+          data = JSON.parse(hidden.value || "{}");
+        } catch {
+          data = {};
+        }
+        data.security_group_name = data.security_group_name || "enclave_instances_sg";
+        data.ingress_rules = Array.isArray(data.ingress_rules) ? data.ingress_rules : [{ protocol: "TCP", from_port: 22, to_port: 22, source_security_group_name: "enclave_workspaces_sg" }];
+        data.egress_rules = Array.isArray(data.egress_rules) ? data.egress_rules : [{ protocol: "TCP", from_port: 443, to_port: 443, cidr_blocks: ["0.0.0.0/0"] }];
+        return data;
+      }
+
+      function buildRuleObj(row, type) {
+        const protocol = (row.querySelector(".rule-protocol")?.value || "TCP").trim();
+        const fromPort = parseInt(row.querySelector(".rule-from-port")?.value || "0", 10);
+        const toPort = parseInt(row.querySelector(".rule-to-port")?.value || "0", 10);
+        const obj = { protocol: protocol || "TCP", from_port: fromPort, to_port: toPort };
+        if (type === "ingress") {
+          const srcSg = row.querySelector(".rule-source-sg")?.value?.trim();
+          if (srcSg) obj.source_security_group_name = srcSg;
+          const cidr = row.querySelector(".rule-cidr")?.value?.trim();
+          if (cidr) obj.cidr_blocks = cidr.split(",").map(s => s.trim()).filter(Boolean);
+        } else {
+          const cidr = row.querySelector(".rule-cidr")?.value?.trim();
+          obj.cidr_blocks = cidr ? cidr.split(",").map(s => s.trim()).filter(Boolean) : ["0.0.0.0/0"];
+        }
+        return obj;
+      }
+
+      function writeHidden() {
+        const name = (sgName?.value || "").trim() || "enclave_instances_sg";
+        const ingress = Array.from(ingressList.querySelectorAll(".security-groups-rule-row")).map(row => buildRuleObj(row, "ingress"));
+        const egress = Array.from(egressList.querySelectorAll(".security-groups-rule-row")).map(row => buildRuleObj(row, "egress"));
+        hidden.value = JSON.stringify({ security_group_name: name, ingress_rules: ingress, egress_rules: egress }, null, 2);
+      }
+
+      function addIngressRow(rule) {
+        const row = document.createElement("div");
+        row.className = "security-groups-rule-row d-flex flex-wrap align-items-center gap-2 mb-2";
+        rule = rule || { protocol: "TCP", from_port: 22, to_port: 22, source_security_group_name: "enclave_workspaces_sg" };
+        row.innerHTML = `
+          <select class="form-select form-select-sm rule-protocol" style="width:6em" aria-label="Protocol">
+            <option value="TCP" ${(rule.protocol || "TCP") === "TCP" ? "selected" : ""}>TCP</option>
+            <option value="UDP" ${(rule.protocol || "") === "UDP" ? "selected" : ""}>UDP</option>
+          </select>
+          <input type="number" class="form-control form-control-sm rule-from-port" placeholder="From port" style="width:6em" min="0" max="65535" value="${rule.from_port ?? 22}" aria-label="From port" />
+          <input type="number" class="form-control form-control-sm rule-to-port" placeholder="To port" style="width:6em" min="0" max="65535" value="${rule.to_port ?? 22}" aria-label="To port" />
+          <input type="text" class="form-control form-control-sm rule-source-sg" placeholder="Source security group" style="min-width:12em" value="${(rule.source_security_group_name || "").replace(/"/g, "&quot;")}" aria-label="Source security group name" />
+          <input type="text" class="form-control form-control-sm rule-cidr" placeholder="CIDR blocks (comma-separated)" style="min-width:10em" value="${ruleToCidrInput(rule.cidr_blocks)}" aria-label="CIDR blocks" />
+          <button type="button" class="btn btn-sm btn-outline-danger remove-rule" aria-label="Remove rule">Remove</button>
+        `;
+        row.querySelector(".remove-rule").addEventListener("click", () => { row.remove(); writeHidden(); });
+        row.querySelectorAll("input, select").forEach(el => el.addEventListener("input", writeHidden));
+        row.querySelectorAll("input, select").forEach(el => el.addEventListener("change", writeHidden));
+        ingressList.appendChild(row);
+      }
+
+      function addEgressRow(rule) {
+        const row = document.createElement("div");
+        row.className = "security-groups-rule-row d-flex flex-wrap align-items-center gap-2 mb-2";
+        rule = rule || { protocol: "TCP", from_port: 443, to_port: 443, cidr_blocks: ["0.0.0.0/0"] };
+        row.innerHTML = `
+          <select class="form-select form-select-sm rule-protocol" style="width:6em" aria-label="Protocol">
+            <option value="TCP" ${(rule.protocol || "TCP") === "TCP" ? "selected" : ""}>TCP</option>
+            <option value="UDP" ${(rule.protocol || "") === "UDP" ? "selected" : ""}>UDP</option>
+          </select>
+          <input type="number" class="form-control form-control-sm rule-from-port" placeholder="From port" style="width:6em" min="0" max="65535" value="${rule.from_port ?? 443}" aria-label="From port" />
+          <input type="number" class="form-control form-control-sm rule-to-port" placeholder="To port" style="width:6em" min="0" max="65535" value="${rule.to_port ?? 443}" aria-label="To port" />
+          <input type="text" class="form-control form-control-sm rule-cidr" placeholder="CIDR blocks (e.g. 0.0.0.0/0)" style="min-width:12em" value="${ruleToCidrInput(rule.cidr_blocks)}" aria-label="CIDR blocks" />
+          <button type="button" class="btn btn-sm btn-outline-danger remove-rule" aria-label="Remove rule">Remove</button>
+        `;
+        row.querySelector(".remove-rule").addEventListener("click", () => { row.remove(); writeHidden(); });
+        row.querySelectorAll("input, select").forEach(el => el.addEventListener("input", writeHidden));
+        row.querySelectorAll("input, select").forEach(el => el.addEventListener("change", writeHidden));
+        egressList.appendChild(row);
+      }
+
+      const data = getData();
+      sgName.value = data.security_group_name;
+      sgName.addEventListener("input", writeHidden);
+      ingressList.innerHTML = "";
+      egressList.innerHTML = "";
+      data.ingress_rules.forEach(r => addIngressRow(r));
+      data.egress_rules.forEach(r => addEgressRow(r));
+      addIngressBtn.addEventListener("click", () => { addIngressRow(); writeHidden(); });
+      addEgressBtn.addEventListener("click", () => { addEgressRow(); writeHidden(); });
+      writeHidden();
     })();
   </script>
 {% endblock content %}

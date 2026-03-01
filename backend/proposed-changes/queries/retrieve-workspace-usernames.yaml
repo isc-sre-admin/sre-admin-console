@@ -1,0 +1,21 @@
+# Contract: retrieve-workspace-usernames query
+# Proposed query for the frontend to populate the Username dropdown on start pipeline pages.
+id: retrieve-workspace-usernames
+label: Retrieve workspace usernames
+function: Return a list of usernames (e.g. from the directory) that can be used when launching a WorkSpace.
+description: |
+  Queries the backend for usernames available for WorkSpace launch. Each item
+  includes the username value and an optional label (e.g. display name or email)
+  for the console dropdown.
+
+inputs:
+  required:
+    - destination_account_id
+  optional:
+    - directory_id
+
+outputs:
+  success:
+    list:
+      - username
+      - label

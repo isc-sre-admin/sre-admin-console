@@ -1,0 +1,18 @@
+# Contract: retrieve-workspace-running-modes query
+# Proposed query for the frontend to populate the Running mode dropdown on start pipeline pages.
+id: retrieve-workspace-running-modes
+label: Retrieve workspace running modes
+function: Return the list of WorkSpace running modes (e.g. for provision-linux-workspace, provision-windows-workspace).
+description: |
+  Queries the backend for valid running mode values. Each item includes the
+  API value (AUTO_STOP, ALWAYS_ON) and a human-readable label for the console
+  (e.g. Auto stop, Always on). The frontend renders these as radio buttons.
+
+inputs:
+  optional: []
+
+outputs:
+  success:
+    list:
+      - value
+      - label
