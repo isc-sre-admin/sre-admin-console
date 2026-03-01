@@ -41,6 +41,16 @@ The route `/pipelines/executions/<execution_id>/` shows a high-level view of a s
 
 Execution data is resolved from the session (for runs started in the current browser session) or from sample active/recent execution data. When backend APIs are available, the view can be wired to the proposed queries `get-pipeline-execution-detail` and `get-pipeline-step-logs` (see `backend/proposed-changes/queries/`).
 
+## Authentication
+
+The console requires users to sign in before using the landing page, pipeline start, or execution detail screens.
+
+- **Sign in**: Unauthenticated users are redirected to `/accounts/login/`. After signing in, they are sent back to the page they requested (or the home page).
+- **Sign out**: Authenticated users see their username and a "Sign out" link in the header; signing out redirects to the home page (login screen for anonymous users).
+- **Backend**: Authentication uses Django’s built-in session-based auth. Integration with Amazon Cognito is planned for a later feature; the UI is structured so that the auth backend can be swapped without changing the sign-in/sign-out experience.
+
+Development superuser (if created): username `admin`, password `admin`.
+
 ## Local development
 
 From `/workspace`:

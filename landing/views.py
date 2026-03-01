@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from typing import Any
 from uuid import uuid4
 
+from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -244,6 +245,7 @@ def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], 
     request.session[SESSION_STARTED_EXECUTIONS_KEY] = started_executions[:10]
 
 
+@login_required
 def home(request: HttpRequest) -> HttpResponse:
     """Render the primary workflow-oriented landing page."""
     end_date = date.today()
@@ -261,6 +263,7 @@ def home(request: HttpRequest) -> HttpResponse:
     return render(request, "landing/home.html", context)
 
 
+@login_required
 def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResponse:
     """Render and process the generic start-pipeline execution form."""
     contract = get_pipeline_contract(pipeline_id)
@@ -426,6 +429,7 @@ def _build_execution_steps(
     return steps, current_index, failure_index, failure_cause
 
 
+@login_required
 def pipeline_execution_detail(request: HttpRequest, execution_id: str) -> HttpResponse:
     """Display pipeline execution detail: steps, current step, expand I/O, failure cause; supports JSON for polling."""
     execution = _get_execution_by_id(request, execution_id)

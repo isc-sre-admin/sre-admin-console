@@ -1,13 +1,16 @@
+import pytest
 from django.urls import reverse
 
 
-def test_landing_page_returns_200(client) -> None:
-    response = client.get(reverse("landing:home"))
+@pytest.mark.django_db
+def test_landing_page_returns_200(authenticated_client) -> None:
+    response = authenticated_client.get(reverse("landing:home"))
     assert response.status_code == 200
 
 
-def test_landing_page_contains_primary_workflow_headings(client) -> None:
-    response = client.get("/")
+@pytest.mark.django_db
+def test_landing_page_contains_primary_workflow_headings(authenticated_client) -> None:
+    response = authenticated_client.get("/")
     page = response.content.decode()
     assert "Set up a new enclave" in page
     assert "Provision enclave resources" in page
@@ -15,9 +18,10 @@ def test_landing_page_contains_primary_workflow_headings(client) -> None:
     assert "Pipeline activity" in page
 
 
-def test_run_initial_setup_links_to_provision_ad_connector_start(client) -> None:
+@pytest.mark.django_db
+def test_run_initial_setup_links_to_provision_ad_connector_start(authenticated_client) -> None:
     """Run Initial Setup should go to Start Pipeline Execution for provision-ad-connector."""
-    response = client.get(reverse("landing:home"))
+    response = authenticated_client.get(reverse("landing:home"))
     assert response.status_code == 200
     page = response.content.decode()
     start_url = reverse(

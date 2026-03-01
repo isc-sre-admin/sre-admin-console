@@ -3,8 +3,8 @@ from django.urls import reverse
 
 
 @pytest.mark.django_db
-def test_start_pipeline_page_renders_contract_fields(client) -> None:
-    response = client.get(
+def test_start_pipeline_page_renders_contract_fields(authenticated_client) -> None:
+    response = authenticated_client.get(
         reverse(
             "landing:start-pipeline-execution",
             kwargs={"pipeline_id": "provision-ad-connector"},
@@ -21,8 +21,8 @@ def test_start_pipeline_page_renders_contract_fields(client) -> None:
 
 
 @pytest.mark.django_db
-def test_start_pipeline_page_renders_different_fields_for_ec2_pipeline(client) -> None:
-    response = client.get(
+def test_start_pipeline_page_renders_different_fields_for_ec2_pipeline(authenticated_client) -> None:
+    response = authenticated_client.get(
         reverse(
             "landing:start-pipeline-execution",
             kwargs={"pipeline_id": "provision-ec2-instance"},
@@ -38,8 +38,8 @@ def test_start_pipeline_page_renders_different_fields_for_ec2_pipeline(client) -
 
 
 @pytest.mark.django_db
-def test_start_pipeline_shows_required_field_errors(client) -> None:
-    response = client.post(
+def test_start_pipeline_shows_required_field_errors(authenticated_client) -> None:
+    response = authenticated_client.post(
         reverse(
             "landing:start-pipeline-execution",
             kwargs={"pipeline_id": "provision-ad-connector"},
@@ -54,8 +54,8 @@ def test_start_pipeline_shows_required_field_errors(client) -> None:
 
 
 @pytest.mark.django_db
-def test_start_pipeline_success_persists_execution_for_landing_and_detail_views(client) -> None:
-    start_response = client.post(
+def test_start_pipeline_success_persists_execution_for_landing_and_detail_views(authenticated_client) -> None:
+    start_response = authenticated_client.post(
         reverse(
             "landing:start-pipeline-execution",
             kwargs={"pipeline_id": "provision-ad-connector"},
@@ -72,18 +72,18 @@ def test_start_pipeline_success_persists_execution_for_landing_and_detail_views(
     assert "Pipeline execution started" in start_page
     assert "arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:" in start_page
 
-    started_executions = client.session.get("started_pipeline_executions")
+    started_executions = authenticated_client.session.get("started_pipeline_executions")
     assert started_executions is not None
     assert len(started_executions) == 1
     execution_id = started_executions[0]["execution_id"]
 
-    landing_response = client.get(reverse("landing:home"))
+    landing_response = authenticated_client.get(reverse("landing:home"))
     landing_page = landing_response.content.decode()
     assert landing_response.status_code == 200
     assert execution_id in landing_page
     assert "View details" in landing_page
 
-    detail_response = client.get(
+    detail_response = authenticated_client.get(
         reverse(
             "landing:pipeline-execution-detail",
             kwargs={"execution_id": execution_id},
@@ -95,8 +95,9 @@ def test_start_pipeline_success_persists_execution_for_landing_and_detail_views(
     assert "Execution detail" in detail_page
 
 
-def test_unknown_pipeline_returns_404(client) -> None:
-    response = client.get(
+@pytest.mark.django_db
+def test_unknown_pipeline_returns_404(authenticated_client) -> None:
+    response = authenticated_client.get(
         reverse(
             "landing:start-pipeline-execution",
             kwargs={"pipeline_id": "missing-pipeline"},

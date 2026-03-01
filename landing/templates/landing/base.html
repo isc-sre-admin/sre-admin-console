@@ -17,13 +17,26 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="border-bottom bg-white">
       <div class="container py-3">
-        <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center justify-content-between text-decoration-none text-dark">
-          <div>
-            <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
-            <h1 class="h4 mb-0">SRE Operations Console</h1>
-          </div>
-          <span class="badge rounded-pill text-bg-light">Prototype</span>
-        </a>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
+            <div>
+              <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
+              <h1 class="h4 mb-0">SRE Operations Console</h1>
+            </div>
+            <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
+          </a>
+          <nav class="d-flex align-items-center" aria-label="Account">
+            {% if user.is_authenticated %}
+              <span class="text-secondary small me-2" aria-label="Signed in as">{{ user.get_username }}</span>
+              <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
+              </form>
+            {% else %}
+              <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
+            {% endif %}
+          </nav>
+        </div>
       </div>
     </header>
     <main id="main-content" class="py-4">
