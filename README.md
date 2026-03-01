@@ -11,6 +11,7 @@ The root route (`/`) provides a workflow-oriented landing page for operations en
 - **Deploy software changes** using Ansible playbooks and PowerShell scripts.
 - **Monitor pipeline activity** using tabs for currently executing and historical runs, with relative and absolute date filters.
 - **Start pipelines directly** from workflow cards and open a contract-driven start screen for each pipeline.
+- **Open execution details** by clicking a pipeline label in the "Currently executing" or "Execution history" table; each label links to the pipeline execution detail screen.
 
 The page currently shows sample pipeline data and UI controls that are ready to be wired to backend APIs.
 
@@ -24,10 +25,21 @@ The route `/pipelines/<pipeline_id>/start/` renders a shared start-execution scr
 - Missing required values show inline validation warnings on submit.
 - A successful submit returns an execution confirmation with:
   - execution ARN
-  - link to a session-backed execution detail stub (`/pipelines/executions/<execution_id>/`)
+  - link to the pipeline execution detail screen (`/pipelines/executions/<execution_id>/`)
   - link back to the landing page so operators can continue other actions while the pipeline runs
 
 Backend start-execution wiring is intentionally stubbed for now; the UI and payload shaping are implemented to match the existing contracts.
+
+## Pipeline execution detail
+
+The route `/pipelines/executions/<execution_id>/` shows a high-level view of a single pipeline run:
+
+- **Execution header**: execution ID, pipeline name, enclave, started/stopped time, status.
+- **Pipeline steps**: list of steps derived from the pipeline contract’s `component_operations`; each step shows status (pending, running, succeeded, failed).
+- **Step detail**: clicking a step expands to show its input and output (JSON). For a failed step, the root cause is shown and the row is highlighted in red.
+- **Dynamic updates**: while the execution is running, the page polls the same URL with `?format=json` every 10 seconds and reloads when the status becomes Succeeded or Failed.
+
+Execution data is resolved from the session (for runs started in the current browser session) or from sample active/recent execution data. When backend APIs are available, the view can be wired to the proposed queries `get-pipeline-execution-detail` and `get-pipeline-step-logs` (see `backend/proposed-changes/queries/`).
 
 ## Local development
 

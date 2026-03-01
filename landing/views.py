@@ -1,3 +1,4 @@
+import json
 from datetime import date, timedelta
 from typing import Any
 from uuid import uuid4
@@ -34,8 +35,23 @@ SAMPLE_ENCLAVES: tuple[EnclaveOption, ...] = (
     ),
 )
 
+# Stable fake execution IDs for sample rows so each pipeline label can link to detail.
+SAMPLE_ACTIVE_EXECUTION_IDS = (
+    "a1b2c3d4-active-ad-connector",
+    "a2b3c4d5-active-linux-ws",
+)
+SAMPLE_RECENT_EXECUTION_IDS = (
+    "b1c2d3e4-recent-windows-ws",
+    "b2c3d4e5-recent-ec2-failed",
+    "b3c4d5e6-recent-ad-connector",
+)
+
 SAMPLE_ACTIVE_EXECUTIONS = [
     {
+        "execution_id": SAMPLE_ACTIVE_EXECUTION_IDS[0],
+        "execution_arn": (
+            f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{SAMPLE_ACTIVE_EXECUTION_IDS[0]}"
+        ),
         "name": "provision-ad-connector",
         "label": "Provision AD Connector",
         "enclave": "sre-dev-enclave-01",
@@ -43,6 +59,10 @@ SAMPLE_ACTIVE_EXECUTIONS = [
         "status": "Running",
     },
     {
+        "execution_id": SAMPLE_ACTIVE_EXECUTION_IDS[1],
+        "execution_arn": (
+            f"arn:aws:states:us-east-1:123456789012:execution:provision-linux-workspace:{SAMPLE_ACTIVE_EXECUTION_IDS[1]}"
+        ),
         "name": "provision-linux-workspace",
         "label": "Provision Linux Workspace",
         "enclave": "sre-research-enclave-02",
@@ -53,24 +73,39 @@ SAMPLE_ACTIVE_EXECUTIONS = [
 
 SAMPLE_RECENT_EXECUTIONS = [
     {
+        "execution_id": SAMPLE_RECENT_EXECUTION_IDS[0],
+        "execution_arn": (
+            f"arn:aws:states:us-east-1:123456789012:execution:provision-windows-workspace:{SAMPLE_RECENT_EXECUTION_IDS[0]}"
+        ),
         "name": "provision-windows-workspace",
         "label": "Provision Windows Workspace",
         "enclave": "sre-research-enclave-01",
         "completed_at": "Today, 09:42 UTC",
+        "started_at_full": "Today, 09:15 UTC",
         "status": "Succeeded",
     },
     {
+        "execution_id": SAMPLE_RECENT_EXECUTION_IDS[1],
+        "execution_arn": (
+            f"arn:aws:states:us-east-1:123456789012:execution:provision-ec2-instance:{SAMPLE_RECENT_EXECUTION_IDS[1]}"
+        ),
         "name": "provision-ec2-instance",
         "label": "Provision EC2 Instance",
         "enclave": "sre-research-enclave-03",
         "completed_at": "Today, 08:17 UTC",
+        "started_at_full": "Today, 08:00 UTC",
         "status": "Failed",
     },
     {
+        "execution_id": SAMPLE_RECENT_EXECUTION_IDS[2],
+        "execution_arn": (
+            f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{SAMPLE_RECENT_EXECUTION_IDS[2]}"
+        ),
         "name": "provision-ad-connector",
         "label": "Provision AD Connector",
         "enclave": "sre-dev-enclave-01",
         "completed_at": "Yesterday, 20:06 UTC",
+        "started_at_full": "Yesterday, 19:30 UTC",
         "status": "Succeeded",
     },
 ]
@@ -303,12 +338,139 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
     return render(request, "landing/start_pipeline_execution.html", context)
 
 
+def _get_execution_by_id(request: HttpRequest, execution_id: str) -> dict[str, Any] | None:
+    """Resolve execution by id from session or sample data."""
+    started = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
+    for item in started:
+        if item.get("execution_id") == execution_id:
+            # Session record may lack execution_arn and label
+            record = dict(item)
+            if "execution_arn" not in record and "name" in record:
+                record["execution_arn"] = (
+                    f"arn:aws:states:us-east-1:123456789012:execution:{record['name']}:{execution_id}"
+                )
+            if "label" not in record and "name" in record:
+                contract = get_pipeline_contract(record["name"])
+                record["label"] = contract.label if contract else record["name"]
+            if "started_at_full" not in record:
+                record["started_at_full"] = record.get("started_at", "")
+            return record
+    for item in SAMPLE_ACTIVE_EXECUTIONS + SAMPLE_RECENT_EXECUTIONS:
+        if item.get("execution_id") == execution_id:
+            return dict(item)
+    return None
+
+
+def _build_execution_steps(
+    execution: dict[str, Any],
+) -> tuple[list[dict[str, Any]], int | None, int | None, str | None]:
+    """Build steps list and optional current/failure index and cause from contract and execution status."""
+    contract = get_pipeline_contract(execution.get("name", ""))
+    if not contract or not contract.component_operations:
+        return [], None, None, None
+
+    steps: list[dict[str, Any]] = []
+    status = execution.get("status", "")
+    # For demo: Running -> current at step index 2; Failed -> fail at step index 1 with cause
+    current_index: int | None = 2 if status in ("Running", "Waiting for workspace registration") else None
+    failure_index: int | None = 1 if status == "Failed" else None
+    failure_cause: str | None = (
+        "SSM Run Command failed: Instance i-0123456789abcdef0 is not in target state. "
+        "Check SSM agent and IAM permissions."
+        if status == "Failed"
+        else None
+    )
+
+    for i, step_info in enumerate(contract.component_operations):
+        step_status = "pending"
+        if status == "Succeeded" or (status not in ("Running", "Waiting for workspace registration", "Failed")):
+            step_status = "succeeded"
+        if status == "Running" or status == "Waiting for workspace registration":
+            if current_index is not None:
+                if i < current_index:
+                    step_status = "succeeded"
+                elif i == current_index:
+                    step_status = "running"
+        if status == "Failed":
+            if failure_index is not None:
+                if i < failure_index:
+                    step_status = "succeeded"
+                elif i == failure_index:
+                    step_status = "failed"
+                else:
+                    step_status = "pending"
+
+        step_input: dict[str, Any] = {}
+        step_output: dict[str, Any] = {}
+        if step_status in ("succeeded", "running"):
+            step_input = {"destination_account_id": "333333333333", "enclave_name": execution.get("enclave", "")}
+        if step_status == "succeeded":
+            step_output = {"status": "success"}
+            if step_info.operation == "create-ad-connector":
+                step_output["directory_id"] = "d-906603250f"
+        if step_status == "failed":
+            step_output = {"error": "SSM.RunCommandFailed", "cause": failure_cause}
+
+        steps.append({
+            "step_id": step_info.step_id,
+            "step_name": step_info.label,
+            "status": step_status,
+            "input": step_input,
+            "output": step_output,
+            "input_display": json.dumps(step_input, indent=2) if step_input else "",
+            "output_display": json.dumps(step_output, indent=2) if step_output else "",
+            "error": step_output.get("error") if step_status == "failed" else None,
+            "cause": step_output.get("cause") if step_status == "failed" else None,
+        })
+
+    return steps, current_index, failure_index, failure_cause
+
+
 def pipeline_execution_detail(request: HttpRequest, execution_id: str) -> HttpResponse:
-    """Display a minimal execution detail stub until feature 003 is implemented."""
-    started_executions = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
-    execution = next((item for item in started_executions if item.get("execution_id") == execution_id), None)
+    """Display pipeline execution detail: steps, current step, expand I/O, failure cause; supports JSON for polling."""
+    execution = _get_execution_by_id(request, execution_id)
+    if execution is None:
+        raise Http404("Execution not found.")
+
+    steps, current_step_index, failure_step_index, failure_cause = _build_execution_steps(execution)
+    started_at_full = execution.get("started_at_full") or execution.get("started_at", "")
+    stopped_at = execution.get("stopped_at") or (
+        execution.get("completed_at") if execution.get("status") in ("Succeeded", "Failed") else None
+    )
+
     context = {
         "execution": execution,
         "execution_id": execution_id,
+        "steps": steps,
+        "current_step_index": current_step_index,
+        "failure_step_index": failure_step_index,
+        "failure_cause": failure_cause,
+        "started_at_full": started_at_full,
+        "stopped_at": stopped_at,
     }
+
+    wants_json = (
+        request.GET.get("format") == "json"
+        or request.headers.get("Accept", "").split(",")[0].strip() == "application/json"
+    )
+    if wants_json:
+        payload = {
+            "execution_id": execution_id,
+            "execution_arn": execution.get("execution_arn"),
+            "name": execution.get("name"),
+            "label": execution.get("label"),
+            "status": execution.get("status"),
+            "started_at": started_at_full,
+            "stopped_at": stopped_at,
+            "enclave_name": execution.get("enclave"),
+            "steps": steps,
+            "current_step_index": current_step_index,
+            "failure_step_index": failure_step_index,
+            "failure_cause": failure_cause,
+        }
+        return HttpResponse(
+            json.dumps(payload, indent=2),
+            content_type="application/json",
+        )
+
     return render(request, "landing/pipeline_execution_detail.html", context)

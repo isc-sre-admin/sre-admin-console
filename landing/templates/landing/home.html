@@ -130,7 +130,13 @@
             <tbody>
               {% for execution in active_executions %}
                 <tr>
-                  <td>{{ execution.label|default:execution.name }}</td>
+                  <td>
+                    {% if execution.execution_id %}
+                      <a href="{% url 'landing:pipeline-execution-detail' execution_id=execution.execution_id %}">{{ execution.label|default:execution.name }}</a>
+                    {% else %}
+                      {{ execution.label|default:execution.name }}
+                    {% endif %}
+                  </td>
                   <td>{{ execution.enclave }}</td>
                   <td>{{ execution.started_at }}</td>
                   <td><span class="badge status-running">{{ execution.status }}</span></td>
@@ -187,7 +193,13 @@
             <tbody>
               {% for execution in recent_executions %}
                 <tr>
-                  <td>{{ execution.label|default:execution.name }}</td>
+                  <td>
+                    {% if execution.execution_id %}
+                      <a href="{% url 'landing:pipeline-execution-detail' execution_id=execution.execution_id %}">{{ execution.label|default:execution.name }}</a>
+                    {% else %}
+                      {{ execution.label|default:execution.name }}
+                    {% endif %}
+                  </td>
                   <td>{{ execution.enclave }}</td>
                   <td>{{ execution.completed_at }}</td>
                   <td>

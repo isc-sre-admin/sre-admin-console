@@ -161,3 +161,14 @@ body.app-shell {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
+
+/* Pipeline execution detail: failed step row */
+.step-row.step-failed {
+  background-color: #fef2f2;
+  border-left: 3px solid #dc2626;
+}
+
+.step-row:focus {
+  outline: 2px solid var(--sre-primary);
+  outline-offset: 2px;
+}
