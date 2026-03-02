@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from landing.forms import EnclaveOption, PipelineStartForm
+from landing.operation_contracts import get_operation_contract
 from landing.pipeline_contracts import get_pipeline_contract, list_pipeline_contracts
 
 SESSION_STARTED_EXECUTIONS_KEY = "started_pipeline_executions"
@@ -243,6 +244,51 @@ def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], 
         record["label"] = execution["label"]
     started_executions.insert(0, record)
     request.session[SESSION_STARTED_EXECUTIONS_KEY] = started_executions[:10]
+
+
+def _execute_unlock_user(request: HttpRequest) -> HttpResponse:
+    """Run unlock-user operation (stub until backend API is available)."""
+    username = (request.POST.get("username") or "").strip()
+    if not username:
+        return HttpResponse(
+            json.dumps({"success": False, "error": "Username is required."}),
+            content_type="application/json",
+            status=400,
+        )
+    # Stub: backend invoke would go here. Payload matches proposed contract.
+    _payload = {"operation": "unlock-user", "username": username}
+    return HttpResponse(
+        json.dumps({
+            "success": True,
+            "message": "Unlock user request accepted. (Backend not yet connected.)",
+        }),
+        content_type="application/json",
+    )
+
+
+@login_required
+def execute_operation(request: HttpRequest, operation_id: str) -> HttpResponse:
+    """Execute a quick operation (e.g. unlock-user) and return JSON."""
+    if request.method != "POST":
+        return HttpResponse(
+            json.dumps({"success": False, "error": "Method not allowed."}),
+            content_type="application/json",
+            status=405,
+        )
+    contract = get_operation_contract(operation_id)
+    if contract is None:
+        return HttpResponse(
+            json.dumps({"success": False, "error": "Unknown operation."}),
+            content_type="application/json",
+            status=404,
+        )
+    if operation_id == "unlock-user":
+        return _execute_unlock_user(request)
+    return HttpResponse(
+        json.dumps({"success": False, "error": "Operation not implemented."}),
+        content_type="application/json",
+        status=501,
+    )
 
 
 @login_required

@@ -1,0 +1,18 @@
+# Contract: unlock-user operation (proposed)
+# Unlock an AD/WorkSpaces user account so they can sign in again.
+id: unlock-user
+label: Unlock User
+function: Unlock a user account in the directory so the user can sign in.
+inputs:
+  required:
+    - operation
+    - username
+  optional: []
+outputs:
+  success:
+    - status
+    - message
+  error:
+    - status
+    - error
+    - message

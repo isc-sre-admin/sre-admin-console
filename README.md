@@ -15,6 +15,14 @@ The root route (`/`) provides a workflow-oriented landing page for operations en
 
 The page currently shows sample pipeline data and UI controls that are ready to be wired to backend APIs.
 
+## Quick operations
+
+Short-running operations that need minimal input are available from an **Operations** dropdown in the header (when signed in). Each operation opens in a modal dialog.
+
+- **Unlock user**: Enter a username and submit to run the unlock-user operation. The request is sent to `/operations/unlock-user/execute/` and returns JSON; the modal shows success or error. Backend invocation is stubbed until the API is available.
+
+Quick operations are defined by YAML contracts under `backend/proposed-changes/operations/` (e.g. `unlock-user.yaml`). The console loads these and exposes them in the nav; the first supported operation is **Unlock user**.
+
 ## Start pipeline execution
 
 The route `/pipelines/<pipeline_id>/start/` renders a shared start-execution screen for all backend pipelines:
