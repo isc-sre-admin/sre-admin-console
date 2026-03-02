@@ -1,16 +1,36 @@
 # Contract: check-workspace-state operation
 id: check-workspace-state
 label: Check Workspace State
-function: Return workspace state; start if STOPPED; used to poll until AVAILABLE.
+function: Return workspace state; start if STOPPED; used to poll until AVAILABLE. When require_workspace_id is true (e.g. post-launch), missing workspace_id returns error. When state is ERROR, error message mentions domain join and service account.
 modes:
   default: Returns workspace state; starts workspace if STOPPED. Used to poll until AVAILABLE. No mode parameter.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: check-workspace-state
+      destination_account_id: string
+    optional:
+      workspace_id: string
+      source_region: string
+      require_workspace_id: boolean
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, ready, state
+    error: object with status, error, message
+
 inputs:
   required:
     - operation
-    - workspace_id
     - destination_account_id
   optional:
+    - workspace_id
     - source_region
+    - require_workspace_id
 outputs:
   success:
     - status

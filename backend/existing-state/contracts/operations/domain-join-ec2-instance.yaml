@@ -5,6 +5,33 @@ function: Domain join existing EC2 via SSM (realm or AWS document); idempotent.
 modes:
   verify: Checks that instance exists and is domain joined.
   modify: Joins instance to domain via SSM (realm join or AWS-JoinDirectoryServiceDomain-V2). Idempotent when already joined.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: domain-join-ec2-instance
+      mode: verify | modify
+      instance_id: string
+      destination_account_id: string
+      domain_join_directory_name: string
+    optional:
+      domain_join_username: string
+      domain_join_password_secret_name: string
+      domain_join_computer_ou: string
+      domain_join_use_aws_document: boolean
+      destination_region: string
+      source_region: string
+      ssm_registration_timeout_seconds: integer
+      source_account_id: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

@@ -12,6 +12,43 @@ description: |
   registration; tags managed instance; applies managed-workspace playbook. Supports
   rerun with node_id for playbook-only on existing WorkSpace.
 
+invocation:
+  target: ProvisionWorkspaceStateMachine
+  stack_output_arn: ProvisionWorkspaceStateMachineArn
+  description: Start the provision-linux-workspace Step Functions state machine; input is the execution input (pipeline inputs below).
+  method: stepfunctions.start_execution
+  payload:
+    required:
+      destination_account_id: string
+      username: string
+    optional:
+      source_workspace_id: string
+      image_name: string
+      workspace_id: string
+      hardware_type: string
+      storage_settings: object
+      directory_id: string
+      running_mode: string
+      encrypt_root_volume: boolean
+      encrypt_user_volume: boolean
+      encryption_key_alias: string
+      tag-user-email: string
+      tag-research-group: string
+      tag-enclave-id: string
+      tag-username: string
+      node_id: string
+      destination_workspace_id: string
+      ssm-default-instance-name: string
+      source_region: string
+      destination_region: string
+      mode: verify | modify
+  example_python: |
+    client = boto3.client("stepfunctions")
+    arn = "<from stack output ProvisionWorkspaceStateMachineArn>"
+    response = client.start_execution(stateMachineArn=arn, input=json.dumps(payload))
+    execution_arn = response["executionArn"]
+  response: start_execution returns executionArn; poll describe_execution for status (RUNNING, SUCCEEDED, FAILED).
+
 inputs:
   required:
     - destination_account_id

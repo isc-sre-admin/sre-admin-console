@@ -5,6 +5,25 @@ function: Copy shared WorkSpaces image into destination account (local copy).
 modes:
   verify: Checks that local copy exists in destination; no copy performed.
   modify: Copies the shared image into the destination account (local copy with -local suffix).
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: copy-image
+      mode: verify | modify
+      image_id: string
+      destination_account_id: string
+    optional:
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, new_image_id
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

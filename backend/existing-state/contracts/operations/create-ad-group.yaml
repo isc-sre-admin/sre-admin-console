@@ -5,6 +5,30 @@ function: Create AD group in AWS Managed Microsoft AD (Directory Service Data AP
 modes:
   verify: Checks that the group exists (find_group); returns verified.
   modify: Creates the group via Directory Service Data API; idempotent (existing group skipped).
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-ad-group
+      mode: verify | modify
+      directory_id: string
+      group_name: string
+      group_type: string
+      group_scope: string
+    optional:
+      group_display_name: string
+      parent_group_name: string
+      description: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

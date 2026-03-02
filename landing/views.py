@@ -1,13 +1,13 @@
 import json
 from datetime import date, timedelta
 from typing import Any
-from uuid import uuid4
 
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
+from landing.backend import get_backend
 from landing.forms import EnclaveOption, PipelineStartForm
 from landing.operation_contracts import get_operation_contract
 from landing.pipeline_contracts import get_pipeline_contract, list_pipeline_contracts
@@ -37,196 +37,93 @@ SAMPLE_ENCLAVES: tuple[EnclaveOption, ...] = (
     ),
 )
 
-# Stable fake execution IDs for sample rows so each pipeline label can link to detail.
-SAMPLE_ACTIVE_EXECUTION_IDS = (
-    "a1b2c3d4-active-ad-connector",
-    "a2b3c4d5-active-linux-ws",
-)
-SAMPLE_RECENT_EXECUTION_IDS = (
-    "b1c2d3e4-recent-windows-ws",
-    "b2c3d4e5-recent-ec2-failed",
-    "b3c4d5e6-recent-ad-connector",
-)
-
-SAMPLE_ACTIVE_EXECUTIONS = [
-    {
-        "execution_id": SAMPLE_ACTIVE_EXECUTION_IDS[0],
-        "execution_arn": (
-            f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{SAMPLE_ACTIVE_EXECUTION_IDS[0]}"
-        ),
-        "name": "provision-ad-connector",
-        "label": "Provision AD Connector",
-        "enclave": "sre-dev-enclave-01",
-        "started_at": "6 minutes ago",
-        "status": "Running",
-    },
-    {
-        "execution_id": SAMPLE_ACTIVE_EXECUTION_IDS[1],
-        "execution_arn": (
-            f"arn:aws:states:us-east-1:123456789012:execution:provision-linux-workspace:{SAMPLE_ACTIVE_EXECUTION_IDS[1]}"
-        ),
-        "name": "provision-linux-workspace",
-        "label": "Provision Linux Workspace",
-        "enclave": "sre-research-enclave-02",
-        "started_at": "18 minutes ago",
-        "status": "Waiting for workspace registration",
-    },
-]
-
-SAMPLE_RECENT_EXECUTIONS = [
-    {
-        "execution_id": SAMPLE_RECENT_EXECUTION_IDS[0],
-        "execution_arn": (
-            f"arn:aws:states:us-east-1:123456789012:execution:provision-windows-workspace:{SAMPLE_RECENT_EXECUTION_IDS[0]}"
-        ),
-        "name": "provision-windows-workspace",
-        "label": "Provision Windows Workspace",
-        "enclave": "sre-research-enclave-01",
-        "completed_at": "Today, 09:42 UTC",
-        "started_at_full": "Today, 09:15 UTC",
-        "status": "Succeeded",
-    },
-    {
-        "execution_id": SAMPLE_RECENT_EXECUTION_IDS[1],
-        "execution_arn": (
-            f"arn:aws:states:us-east-1:123456789012:execution:provision-ec2-instance:{SAMPLE_RECENT_EXECUTION_IDS[1]}"
-        ),
-        "name": "provision-ec2-instance",
-        "label": "Provision EC2 Instance",
-        "enclave": "sre-research-enclave-03",
-        "completed_at": "Today, 08:17 UTC",
-        "started_at_full": "Today, 08:00 UTC",
-        "status": "Failed",
-    },
-    {
-        "execution_id": SAMPLE_RECENT_EXECUTION_IDS[2],
-        "execution_arn": (
-            f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{SAMPLE_RECENT_EXECUTION_IDS[2]}"
-        ),
-        "name": "provision-ad-connector",
-        "label": "Provision AD Connector",
-        "enclave": "sre-dev-enclave-01",
-        "completed_at": "Yesterday, 20:06 UTC",
-        "started_at_full": "Yesterday, 19:30 UTC",
-        "status": "Succeeded",
-    },
-]
-
-
 def _get_ami_choices(source_region: str) -> list[tuple[str, str]]:
-    """Return (ami_id, display_label) choices for the AMI dropdown.
-
-    When the retrieve-ec2-source-images query is implemented, call it with
-    source_region and map the response list to (ami_id, f"{ami_name} ({ami_id})").
-    """
-    # Sample data until backend query retrieve-ec2-source-images is available.
-    _ = source_region
-    return [
-        ("ami-091898c3a03efa550", "SRE-Rocky9-Base-CUI-2026-02-27 (ami-091898c3a03efa550)"),
-    ]
+    """Return (ami_id, display_label) choices for the AMI dropdown via backend query."""
+    result = get_backend().run_query({"query": "retrieve-ec2-source-images", "source_region": source_region})
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["ami_id"], item.get("ami_name") or f"{item['ami_id']}") for item in items]
 
 
-def _get_workspace_choices(source_region: str) -> list[tuple[str, str]]:
-    """Return (workspace_id, display_label) choices for the Source workspace id dropdown.
-
-    When the retrieve-workspace-source-workspaces query is implemented, call it
-    with source_region and map the response list to
-    (workspace_id, f"{workspace_name} ({workspace_id})").
-    """
-    # Sample data until backend query retrieve-workspace-source-workspaces is available.
-    _ = source_region
-    return [
-        ("ws-0123456789abcdef0", "Windows - testuser (ws-0123456789abcdef0)"),
-    ]
+def _get_workspace_choices(source_region: str, os_type: str = "WINDOWS") -> list[tuple[str, str]]:
+    """Return (workspace_id, display_label) choices for the Source workspace id dropdown via backend query."""
+    result = get_backend().run_query({
+        "query": "retrieve-workspace-source-workspaces",
+        "source_region": source_region,
+        "os_type": os_type,
+    })
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["workspace_id"], item.get("workspace_name") or item["workspace_id"]) for item in items]
 
 
 def _get_hardware_type_choices(source_region: str | None = None) -> list[tuple[str, str]]:
-    """Return (value, label) choices for the Hardware type dropdown.
-
-    When the retrieve-workspace-hardware-types query is implemented, call it
-    with source_region (optional) and map the response list to (value, label).
-    """
-    # Sample data until backend query retrieve-workspace-hardware-types is available.
-    _ = source_region
-    return [
-        ("STANDARD", "Standard"),
-        ("PERFORMANCE", "Performance"),
-        ("POWER", "Power"),
-        ("POWERPRO", "PowerPro"),
-    ]
+    """Return (value, label) choices for the Hardware type dropdown via backend query."""
+    payload: dict[str, Any] = {"query": "retrieve-workspace-hardware-types"}
+    if source_region:
+        payload["source_region"] = source_region
+    result = get_backend().run_query(payload)
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["value"], item.get("label") or item["value"]) for item in items]
 
 
 def _get_directory_choices(destination_account_id: str | None = None) -> list[tuple[str, str]]:
-    """Return (id, label) choices for the Directory id dropdown.
-
-    When the retrieve-workspace-directories query is implemented, call it with
-    destination_account_id and map the response list to (id, label).
-    """
-    # Sample data until backend query retrieve-workspace-directories is available.
-    _ = destination_account_id
-    return [
-        ("d-906603250f", "testsre.local"),
-    ]
+    """Return (id, label) choices for the Directory id dropdown via backend query."""
+    account_id = destination_account_id or ""
+    result = get_backend().run_query({
+        "query": "retrieve-workspace-directories",
+        "destination_account_id": account_id,
+    })
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["id"], item.get("label") or item["id"]) for item in items]
 
 
 def _get_encryption_key_alias_choices(destination_account_id: str | None = None) -> list[tuple[str, str]]:
-    """Return (alias, label) choices for the Encryption key alias dropdown.
-
-    When the retrieve-workspace-encryption-key-aliases query is implemented,
-    call it with destination_account_id and map the response list to (alias, label).
-    """
-    # Sample data until backend query retrieve-workspace-encryption-key-aliases is available.
-    _ = destination_account_id
-    return [
-        ("aws/workspaces", "aws/workspaces"),
-    ]
+    """Return (alias, label) choices for the Encryption key alias dropdown via backend query."""
+    payload: dict[str, Any] = {"query": "retrieve-workspace-encryption-key-aliases"}
+    if destination_account_id:
+        payload["destination_account_id"] = destination_account_id
+    result = get_backend().run_query(payload)
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["alias"], item.get("label") or item["alias"]) for item in items]
 
 
 def _get_username_choices(
     destination_account_id: str | None = None,
     directory_id: str | None = None,
 ) -> list[tuple[str, str]]:
-    """Return (username, label) choices for the Username dropdown.
-
-    When the retrieve-workspace-usernames query is implemented, call it with
-    destination_account_id (and optionally directory_id) and map the response
-    list to (username, label).
-    """
-    # Sample data until backend query retrieve-workspace-usernames is available.
-    _ = destination_account_id
-    _ = directory_id
-    return [
-        ("testuser", "testuser (testuser@testsre.local)"),
-    ]
+    """Return (username, label) choices for the Username dropdown via backend query."""
+    account_id = destination_account_id or ""
+    payload: dict[str, Any] = {"query": "retrieve-workspace-usernames", "destination_account_id": account_id}
+    if directory_id:
+        payload["directory_id"] = directory_id
+    result = get_backend().run_query(payload)
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["username"], item.get("label") or item["username"]) for item in items]
 
 
 def _get_running_mode_choices() -> list[tuple[str, str]]:
-    """Return (value, label) choices for the Running mode radio buttons.
-
-    When the retrieve-workspace-running-modes query is implemented, call it
-    and map the response list to (value, label). Labels are human-readable
-    (e.g. Auto stop, Always on).
-    """
-    # Sample data until backend query retrieve-workspace-running-modes is available.
-    return [
-        ("AUTO_STOP", "Auto stop"),
-        ("ALWAYS_ON", "Always on"),
-    ]
+    """Return (value, label) choices for the Running mode radio buttons via backend query."""
+    result = get_backend().run_query({"query": "retrieve-workspace-running-modes"})
+    if result.get("status") != "success":
+        return []
+    items = result.get("result") or []
+    return [(item["value"], item.get("label") or item["value"]) for item in items]
 
 
 def _start_pipeline_execution(pipeline_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """Simulate pipeline start while backend API wiring is not yet implemented."""
-    execution_id = str(uuid4())
-    started_at = timezone.now()
-    return {
-        "execution_id": execution_id,
-        "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:{pipeline_id}:{execution_id}",
-        "name": pipeline_id,
-        "status": "Running",
-        "started_at": started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "started_at_relative": "Just now",
-        "payload": payload,
-    }
+    """Start pipeline via backend (mock or real). Returns execution info or error dict."""
+    return get_backend().start_pipeline(pipeline_id, payload)
 
 
 def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], enclave_name: str) -> None:
@@ -247,7 +144,7 @@ def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], 
 
 
 def _execute_unlock_user(request: HttpRequest) -> HttpResponse:
-    """Run unlock-user operation (stub until backend API is available)."""
+    """Run unlock-user operation via backend (mock or real)."""
     username = (request.POST.get("username") or "").strip()
     if not username:
         return HttpResponse(
@@ -255,13 +152,16 @@ def _execute_unlock_user(request: HttpRequest) -> HttpResponse:
             content_type="application/json",
             status=400,
         )
-    # Stub: backend invoke would go here. Payload matches proposed contract.
-    _payload = {"operation": "unlock-user", "username": username}
+    payload = {"operation": "unlock-user", "username": username}
+    result = get_backend().invoke_operation(payload)
+    if result.get("status") == "error":
+        return HttpResponse(
+            json.dumps({"success": False, "error": result.get("error", "Error"), "message": result.get("message", "")}),
+            content_type="application/json",
+            status=400,
+        )
     return HttpResponse(
-        json.dumps({
-            "success": True,
-            "message": "Unlock user request accepted. (Backend not yet connected.)",
-        }),
+        json.dumps({"success": True, "message": result.get("message", "Unlock user request accepted.")}),
         content_type="application/json",
     )
 
@@ -291,16 +191,56 @@ def execute_operation(request: HttpRequest, operation_id: str) -> HttpResponse:
     )
 
 
+def _status_display(raw: str) -> str:
+    """Map backend status (RUNNING/SUCCEEDED/FAILED) to template display (Running/Succeeded/Failed)."""
+    u = (raw or "").upper()
+    if u == "RUNNING":
+        return "Running"
+    if u == "SUCCEEDED":
+        return "Succeeded"
+    if u == "FAILED":
+        return "Failed"
+    return raw or "Unknown"
+
+
+def _executions_from_backend(request: HttpRequest) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Fetch pipeline executions from backend and merge with session-started; return (active, recent)."""
+    backend = get_backend()
+    all_executions: list[dict[str, Any]] = []
+    for contract in list_pipeline_contracts():
+        result = backend.run_query({
+            "query": "list-pipeline-executions",
+            "pipeline_id": contract.id,
+        })
+        if result.get("status") == "success":
+            for e in result.get("result") or []:
+                row = dict(e)
+                row.setdefault("enclave", row.get("enclave_name", ""))
+                row["status"] = _status_display(row.get("status", ""))
+                all_executions.append(row)
+    active = [e for e in all_executions if (e.get("status") or "").lower() == "running"]
+    recent = [e for e in all_executions if e.get("status") in ("Succeeded", "Failed")]
+    started_executions = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
+    for s in started_executions:
+        r = dict(s)
+        r.setdefault("enclave", r.get("enclave", ""))
+        r.setdefault("status", "Running")
+        if (r.get("status") or "").lower() != "running":
+            continue
+        if not any(a.get("execution_id") == r.get("execution_id") for a in active):
+            active.insert(0, r)
+    return active, recent
+
+
 @login_required
 def home(request: HttpRequest) -> HttpResponse:
     """Render the primary workflow-oriented landing page."""
     end_date = date.today()
     start_date = end_date - timedelta(days=7)
-    started_executions = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
-    active_executions = [*started_executions, *SAMPLE_ACTIVE_EXECUTIONS]
+    active_executions, recent_executions = _executions_from_backend(request)
     context = {
         "active_executions": active_executions,
-        "recent_executions": SAMPLE_RECENT_EXECUTIONS,
+        "recent_executions": recent_executions,
         "relative_ranges": [7, 30, 60],
         "default_range_days": 7,
         "default_start_date": start_date.isoformat(),
@@ -361,20 +301,29 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
         if form.is_valid():
             payload = form.build_pipeline_payload()
             started_execution = _start_pipeline_execution(contract.id, payload)
-            started_execution["label"] = contract.label
-            _save_execution_to_session(request, started_execution, form.cleaned_data["enclave_name"])
-            form = PipelineStartForm(
-                contract=contract,
-                enclaves=SAMPLE_ENCLAVES,
-                ami_choices=ami_choices,
-                workspace_choices=workspace_choices,
-                hardware_type_choices=hardware_type_choices,
-                directory_choices=directory_choices,
-                encryption_key_alias_choices=encryption_key_alias_choices,
-                username_choices=username_choices,
-                running_mode_choices=running_mode_choices,
-                initial={"mode": "modify"},
-            )
+            if started_execution.get("status") == "error":
+                form.add_error(
+                    None,
+                    started_execution.get("message") or started_execution.get("error", "Failed to start pipeline."),
+                )
+                started_execution = None
+            else:
+                if not started_execution.get("label"):
+                    started_execution["label"] = contract.label
+                started_execution["payload"] = payload
+                _save_execution_to_session(request, started_execution, form.cleaned_data["enclave_name"])
+                form = PipelineStartForm(
+                    contract=contract,
+                    enclaves=SAMPLE_ENCLAVES,
+                    ami_choices=ami_choices,
+                    workspace_choices=workspace_choices,
+                    hardware_type_choices=hardware_type_choices,
+                    directory_choices=directory_choices,
+                    encryption_key_alias_choices=encryption_key_alias_choices,
+                    username_choices=username_choices,
+                    running_mode_choices=running_mode_choices,
+                    initial={"mode": "modify"},
+                )
         else:
             form.add_error(None, "Please resolve the validation errors and submit again.")
 
@@ -387,12 +336,28 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
     return render(request, "landing/start_pipeline_execution.html", context)
 
 
+def _get_all_executions_from_backend() -> list[dict[str, Any]]:
+    """Return merged list of executions from all pipelines (for lookup by execution_id)."""
+    backend = get_backend()
+    all_executions: list[dict[str, Any]] = []
+    for contract in list_pipeline_contracts():
+        result = backend.run_query({"query": "list-pipeline-executions", "pipeline_id": contract.id})
+        if result.get("status") == "success":
+            for e in result.get("result") or []:
+                row = dict(e)
+                row.setdefault("enclave", row.get("enclave_name", ""))
+                row.setdefault("started_at_full", row.get("started_at", ""))
+                row.setdefault("completed_at", row.get("stopped_at"))
+                row["status"] = _status_display(row.get("status", ""))
+                all_executions.append(row)
+    return all_executions
+
+
 def _get_execution_by_id(request: HttpRequest, execution_id: str) -> dict[str, Any] | None:
-    """Resolve execution by id from session or sample data."""
+    """Resolve execution by id from session or backend."""
     started = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
     for item in started:
         if item.get("execution_id") == execution_id:
-            # Session record may lack execution_arn and label
             record = dict(item)
             if "execution_arn" not in record and "name" in record:
                 record["execution_arn"] = (
@@ -404,9 +369,9 @@ def _get_execution_by_id(request: HttpRequest, execution_id: str) -> dict[str, A
             if "started_at_full" not in record:
                 record["started_at_full"] = record.get("started_at", "")
             return record
-    for item in SAMPLE_ACTIVE_EXECUTIONS + SAMPLE_RECENT_EXECUTIONS:
+    for item in _get_all_executions_from_backend():
         if item.get("execution_id") == execution_id:
-            return dict(item)
+            return item
     return None
 
 
@@ -482,11 +447,31 @@ def pipeline_execution_detail(request: HttpRequest, execution_id: str) -> HttpRe
     if execution is None:
         raise Http404("Execution not found.")
 
-    steps, current_step_index, failure_step_index, failure_cause = _build_execution_steps(execution)
-    started_at_full = execution.get("started_at_full") or execution.get("started_at", "")
-    stopped_at = execution.get("stopped_at") or (
-        execution.get("completed_at") if execution.get("status") in ("Succeeded", "Failed") else None
-    )
+    execution_arn = execution.get("execution_arn")
+    detail_result = None
+    if execution_arn:
+        detail_result = get_backend().run_query({
+            "query": "get-pipeline-execution-detail",
+            "execution_id": execution_id,
+            "execution_arn": execution_arn,
+        })
+    if detail_result and detail_result.get("status") == "success":
+        res = detail_result.get("result") or {}
+        steps = res.get("steps") or []
+        for s in steps:
+            s["input_display"] = json.dumps(s.get("input") or {}, indent=2)
+            s["output_display"] = json.dumps(s.get("output") or {}, indent=2)
+        current_step_index = res.get("current_step_index")
+        failure_step_index = res.get("failure_step_index")
+        failure_cause = res.get("failure_cause")
+        started_at_full = res.get("started_at") or execution.get("started_at_full") or execution.get("started_at", "")
+        stopped_at = res.get("stopped_at")
+    else:
+        steps, current_step_index, failure_step_index, failure_cause = _build_execution_steps(execution)
+        started_at_full = execution.get("started_at_full") or execution.get("started_at", "")
+        stopped_at = execution.get("stopped_at") or (
+            execution.get("completed_at") if execution.get("status") in ("Succeeded", "Failed") else None
+        )
 
     context = {
         "execution": execution,

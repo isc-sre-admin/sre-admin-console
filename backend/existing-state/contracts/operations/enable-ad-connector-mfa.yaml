@@ -5,6 +5,34 @@ function: Enable RADIUS MFA on AD Connector using enclave shared secret; idempot
 modes:
   verify: Checks that RADIUS MFA is enabled and settings match. Returns verified false with radius_status Failed when in failed state (suggests re-run modify).
   modify: Enables RADIUS via Directory Service enable_radius. Idempotent when already enabled with matching settings; retries when RadiusStatus is Failed.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: enable-ad-connector-mfa
+      mode: verify | modify
+      destination_account_id: string
+      enclave_name: string
+      radius_server_display_label: string
+      radius_server_dns_name: string
+      secret_name: string
+      radius_server_port: integer
+      protocol: string
+      server_timeout: integer
+      max_radius_retry_requests: integer
+    optional:
+      directory_dns_name: string
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified, radius_status
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

@@ -4,6 +4,24 @@ label: Ensure Ansible on Node
 function: Ensure Ansible is installed on SSM node (e.g. before playbook on existing workspace).
 modes:
   default: Runs SSM command to install Ansible and dependencies on the node if needed. No mode parameter.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: ensure-ansible-on-node
+      destination_account_id: string
+      destination_region: string
+      node_id: string
+    optional: []
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

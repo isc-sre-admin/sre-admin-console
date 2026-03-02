@@ -12,6 +12,31 @@ description: |
   applies duoauthproxy.yaml to node(s); enables RADIUS MFA; registers directory with
   WorkSpaces; configures workspace branding; creates SSM hybrid activation.
 
+invocation:
+  target: ProvisionAdConnectorStateMachine
+  stack_output_arn: ProvisionAdConnectorStateMachineArn
+  description: Start the provision-ad-connector Step Functions state machine; input is the execution input (pipeline inputs below).
+  method: stepfunctions.start_execution
+  payload:
+    required:
+      mode: verify | modify
+      destination_account_id: string
+      enclave_name: string
+    optional:
+      security_groups: array
+      ou_path: string
+      source_region: string
+      destination_region: string
+  example_python: |
+    client = boto3.client("stepfunctions")
+    arn = "<from stack output ProvisionAdConnectorStateMachineArn>"
+    response = client.start_execution(
+        stateMachineArn=arn,
+        input=json.dumps({"mode": "modify", "destination_account_id": "...", "enclave_name": "..."}),
+    )
+    execution_arn = response["executionArn"]
+  response: start_execution returns executionArn; poll describe_execution for status (RUNNING, SUCCEEDED, FAILED).
+
 inputs:
   required:
     - mode

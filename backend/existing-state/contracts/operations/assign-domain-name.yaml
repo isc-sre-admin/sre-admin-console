@@ -5,6 +5,28 @@ function: Ensure Route 53 A record (subdomain in source account hosted zone) poi
 modes:
   verify: Checks that A record exists and points to the instance IP; no changes.
   modify: Creates or updates (UPSERT) the A record to point to the instance IP.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: assign-domain-name
+      mode: verify | modify
+      destination_account_id: string
+      subdomain: string
+    optional:
+      instance_id: string
+      instance_name: string
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

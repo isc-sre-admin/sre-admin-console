@@ -5,6 +5,28 @@ function: Apply playbook to a specific SSM node; used in workspace pipeline reru
 modes:
   verify: Runs playbook in Ansible check mode (dry run); no changes on the node.
   modify: Runs playbook on the node; creates or updates state per playbook.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: apply-playbook-to-node
+      mode: verify | modify
+      destination_account_id: string
+      destination_region: string
+      node_id: string
+      playbook: string
+    optional:
+      username: string
+      install_dependencies: boolean
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

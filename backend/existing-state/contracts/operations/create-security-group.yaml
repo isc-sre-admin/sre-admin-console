@@ -5,6 +5,31 @@ function: Create EC2 security group with ingress/egress rules; idempotent by nam
 modes:
   verify: Assumes verifier role; checks security group with name exists in VPC. Returns verified true and security_group_id if found.
   modify: Creates security group if missing; adds ingress and egress rules. Idempotent; re-run returns success with already_exists when group exists.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-security-group
+      mode: verify | modify
+      security_group_name: string
+      ingress_rules: array
+      egress_rules: array
+      destination_account_id: string
+    optional:
+      vpc_id: string
+      vpc_name: string
+      description: string
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, security_group_id, already_exists, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

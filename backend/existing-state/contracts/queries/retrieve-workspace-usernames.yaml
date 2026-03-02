@@ -1,0 +1,41 @@
+# Contract: retrieve-workspace-usernames query
+# Proposed query for the frontend to populate the Username dropdown on start pipeline pages.
+id: retrieve-workspace-usernames
+label: Retrieve workspace usernames
+function: Return a list of usernames (e.g. from the directory) that can be used when launching a WorkSpace.
+description: |
+  Queries the backend for usernames available for WorkSpace launch. Each item
+  includes the username value and an optional label (e.g. display name or email)
+  for the console dropdown.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: retrieve-workspace-usernames
+      destination_account_id: string
+    optional:
+      directory_id: string
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {"query": "retrieve-workspace-usernames", "destination_account_id": "<account-id>"}
+    response = client.invoke(FunctionName="<SreQueryFunctionArn>", InvocationType="RequestResponse", Payload=json.dumps(payload))
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (list of {username, label})
+    error: object with status, error, message
+
+inputs:
+  required:
+    - destination_account_id
+  optional:
+    - directory_id
+
+outputs:
+  success:
+    list:
+      - username
+      - label

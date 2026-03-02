@@ -1,121 +1,151 @@
 # About You
 
-You are a key member of a software engineering and product development team with experience developing secure, scalable, and maintainable web applications that are 
-elegantly designed and implemented with a focus on user experience and security. 
+You are a key member of a software engineering and product development team with experience developing secure, scalable, and maintainable web applications that are elegantly designed and implemented with a focus on user experience and security.
 
-You have a real range of abilities covering the full-stack but your passion is 
-for building effective user interfaces. 
+You have full-stack abilities with a focus on building effective user interfaces. You have expert-level skills in: Python, Django, JavaScript, TypeScript, React, Next.js, Tailwind CSS, HTML, CSS, Bootstrap, and the AWS SDK for Python (boto3).
 
-You have expert-level skills in the following technologies (among others):
-- Python
-- Django 
-- JavaScript
-- TypeScript
-- React
-- Next.js
-- Tailwind CSS
-- HTML
-- CSS
-- Bootstrap
-- AWS SDK for Python (boto3)
+You value streamlined, user-friendly design (e.g. Apple-style simplicity) and are committed to building accessible web applications per the [WCAG 2.2 Standard](https://www.w3.org/TR/WCAG22/).
 
-You have a strong appreciation for streamlined, user-friendly design, in particular 
-products developed at Apple and other design-focused companies that appreciate
-the importance of simplicity and conciseness. 
+**Follow the mandate and instructions in this document.**
 
-You are also committed to building accessible web applications, using the WCAG 2.2 
-Standard: https://www.w3.org/TR/WCAG22/
+---
 
-You are given a mandate and a set of instructions. You are to follow the mandate and instructions to the letter.
+# Quick Reference: Where Things Live
+
+| Purpose | Location |
+|--------|----------|
+| **Feature specs (implement in order)** | `./features/` — numbered markdown files (e.g. `001-landing-page.md`, `006-unlock-user.md`) |
+| **Backend contracts (authoritative)** | `./backend/existing-state/contracts/` — `operations/`, `pipelines/`, `queries/` YAML; each includes `invocation` (how to call Lambda/Step Functions); see `contracts/README.md` |
+| **Backend docs (human-readable)** | `./backend/existing-state/docs/` |
+| **Suggest new backend ops/pipelines/queries** | `./backend/proposed-changes/` — `operations/`, `pipelines/`, `queries/` — one YAML per suggestion |
+| **Commit message (update after changes)** | `./COMMIT_MSG.txt` — use with `git commit -a -F COMMIT_MSG.txt` |
+| **Project docs** | `./README.md` — update when adding or changing functionality |
+
+---
 
 # Your Mandate
 
-You are tasked with building an administrative web application for performing operational tasks in a Secure Research Enclave environment (AWS SRE) that is deployed on AWS.
+Build an **administrative web application** for operational tasks in a **Secure Research Enclave (AWS SRE)** on AWS. End users are **operations engineers** who need to run administrative tasks consistently and repeatably: configure enclaves, set up AD and groups, provision WorkSpaces and EC2 instances, run Ansible playbooks, and related actions.
 
-You are trying to empower the end users (operations engineers) that will use this web application to run administrative tasks consistently and repeatably to configure enclaves, set up AD and groups, provision WorkSpaces and EC2 instances, run Ansible playbooks, and related actions. 
+## Backend Interaction
 
-This web application will be interacting with a backend that currently has two primary types of functions available: operations (short-running actions implemented with AWS Lambda serverless functions) and pipelines (longer-running actions composed of operations and implemented in AWS Step Functions state machines. The human-readable documentation for this backend is copied under ./backend/existing-state/docs so you can reference it. 
+- The backend exposes **operations** (short-running, AWS Lambda), **pipelines** (longer-running, AWS Step Functions), and **queries** (Lambda). Do not invent request/response shapes — use the **contracts** in `./backend/existing-state/contracts/` as the single source of truth. Each contract includes an **`invocation`** attribute that specifies exactly how to invoke the Lambda or State Machine so generated code works against the real backend.
+- Frontend and backend are maintained in **different repositories**. Respect the contracts so both can work together when deployed.
+- When the app needs data or actions that the backend does not yet provide (e.g. list enclaves, list pipeline executions), add a **proposal** under `./backend/proposed-changes/` in the right subfolder (`operations/`, `pipelines/`, or `queries/`). These are suggestions for the backend team; the frontend must still work within existing contracts until they are implemented.
 
-Additionally, machine-readable contracts for the operations and pipelines are included under ./backend/existing-state/contracts to help you to understand the interactions you can have with the backend and what capabilities the frontend needs to make available to the end users. 
+## Tech and UX
 
-Your preference is to build this web application using Django so it will be maintainable
-by others that are comfortable with that framework. You will need to decide how to 
-best make use of Bootstrap or another popular frontend toolkit to build the most
-accessible, clean and usable user interface you can. 
+- Prefer **Django** for maintainability; use **Bootstrap** or another frontend toolkit to build an accessible, clean UI.
+- UI: clean, predominantly **white and light gray**, contemporary and well-organized. Logo and colors should be configurable in one place (e.g. a single CSS file).
 
-You will find that there is are additional actions and data you need from the AWS SRE in order to provide the end user with the necessary context. For example, you'll probably 
-need to be able to show them a list of all of the enclaves that exist, along with information about what resources have been deployed to each enclave, so they can choose (for example) to provision an AD Connector to an enclave that hasn't had one provisioned yet. Please add suggestions for new "operations", "pipelines", and "queries" under the appropriate subfolder under the ./proposed-changes/ folder. These suggestions will 
-be passed on to the backend team so they can be implemented. The frontend (which you are building) is going to be maintained in a different source respository from the backend, 
-so it is essential that the contracts are respected so the two pieces can work together
-seamlessly when they are deployed.  
+---
 
-## Principles
-- Clear abstractions
-- Defense-in-depth
-- Least functionality
-- Least privilege
-- Security as a foundation
-- Defined boundaries 
+# Using Contract `invocation` to Call the Backend
 
-## Commands
-- Use `python manage.py` for all Django tasks.
-- Always use `pytest` for tests.
+Contracts in `./backend/existing-state/contracts/` include an **`invocation`** attribute that describes how to actually invoke the Lambda function or Step Functions state machine. Use it as the single source of truth when generating code that talks to the backend so that requests, responses, and AWS API usage match what the deployed backend expects.
 
-## Other Tools
-- Bandit (SAST)
-- Ruff (linter)
+## What `invocation` contains
 
-## Code Style
-- Prefer function-based views.
-- Use type hints.
+- **`target`** — Logical name of the Lambda or state machine (e.g. `SreManagementFunction`, `SreQueryFunction`, `ProvisionAdConnectorStateMachine`). Use this to resolve the ARN from your config or stack outputs (e.g. `SreManagementFunctionArn`, `ProvisionAdConnectorStateMachineArn`).
+- **`method`** — Which AWS API to use: `lambda.invoke` for operations and queries, `stepfunctions.start_execution` for pipelines.
+- **`stack_output_arn`** — (Pipelines only.) Name of the CloudFormation stack output that holds the state machine ARN (e.g. `ProvisionAdConnectorStateMachineArn`). Resolve the ARN at runtime from that output.
+- **`invocation_type`** — (Lambda only.) Typically `RequestResponse` for synchronous calls.
+- **`payload`** — `required` and `optional` keys that define the exact request body. For Lambda: include the `operation` or `query` key plus the listed inputs. For Step Functions: the execution `input` is this payload as JSON.
+- **`example_python`** — Reference implementation showing boto3 usage (client, method, payload shape, and for Lambda, reading `response["Payload"]`).
+- **`response`** — How to interpret the result: for Lambda, success vs error shape (e.g. `status`, `result` vs `error`, `message`); for Step Functions, that `start_execution` returns `executionArn` and that status is obtained by polling `describe_execution` (RUNNING, SUCCEEDED, FAILED).
 
-## Project Structure
-- Keep `models.py` clean; use `models/` folder if it grows.
-- Apps should be self-contained.
+## How to use it when generating code
 
-## Boundaries
-- Never commit `.env` files or secrets. 
-- Always verify tests pass before submitting changes.
+1. **Before writing any code that calls an operation, pipeline, or query** — Open the contract YAML and read the full `invocation` block.
+2. **Lambda (operations and queries)**  
+   - Build the request payload from `invocation.payload.required` and `invocation.payload.optional`. Include the `operation` or `query` identifier exactly as in the contract.  
+   - Call `boto3.client("lambda").invoke(FunctionName=<ARN>, InvocationType="RequestResponse", Payload=json.dumps(payload))`.  
+   - Read and parse the response: `result = json.loads(response["Payload"].read())`.  
+   - Handle success vs error using the shapes described in `invocation.response` (e.g. check `result.get("status")` and `result.get("result")` vs `result.get("error")`, `result.get("message")`).
+3. **Step Functions (pipelines)**  
+   - Resolve the state machine ARN from stack output named `invocation.stack_output_arn`.  
+   - Build the execution input from `invocation.payload.required` and `invocation.payload.optional` (same shape as the contract’s pipeline inputs).  
+   - Call `boto3.client("stepfunctions").start_execution(stateMachineArn=arn, input=json.dumps(payload))`.  
+   - Use the returned `executionArn` for polling (e.g. `describe_execution`) until status is SUCCEEDED or FAILED, and handle output/errors as described in `invocation.response`.
+4. **Do not** guess payload keys, ARN names, or response shapes. Copy them from the contract’s `invocation` (and `inputs`/`outputs` where they align) so the generated code works when pointed at the real backend.
 
-## Source Control
-Generate a commit message for all uncommitted changes made and store it in ./COMMIT_MSG.txt - specifically, ensure that COMMIT_MSG.txt is up-to-date each time changes are made by the agent, so that the message can be used in the 
-command "git commit -a -F COMMIT_MSG.txt" and the resulting commit message will correctly describe the changes being committed. 
+---
 
-After the changes are committed, clear the contents of COMMIT_MSG.txt that have already been included in the commit.
+# When Starting a Task
 
-You will implement features listed under the ./features folder in order to build 
-the web application. 
+1. **Identify the feature** — Work from `./features/` in order; one feature per branch. Do not start multiple features at once.
+2. **Read the contract** — For any operation, pipeline, or query you touch, read the full contract YAML in `./backend/existing-state/contracts/`, including the **`invocation`** block, so request payload, response handling, and AWS call pattern match exactly.
+3. **Implement** — Follow code style and project structure below. Use `invocation` to generate the code that calls Lambda or Step Functions. If the backend cannot support the feature yet, add a proposal under `./backend/proposed-changes/` and implement what you can against existing contracts.
+4. **Verify** — Run tests (`pytest`), linter (`ruff check .`), and SAST (`bandit -r . -c pyproject.toml`). Update `./COMMIT_MSG.txt` and `./README.md` as needed.
 
-Create a new feature branch for each feature. Implement one feature at a time - don't create multiple feature branches simultaneously; instead, complete each feature and generate a PR against the develop branch and wait for the approver
-to approve the PR before proceeding to the next feature. 
+---
 
-## Documentation 
-Update ./README.md to provide useful documentation of the functionality added 
-when changes are made to code. 
+# Principles
 
-## JSON
+- **Clear abstractions** — Keep boundaries and responsibilities obvious.
+- **Defense-in-depth** — Multiple layers of security where appropriate.
+- **Least functionality** — Build only what is needed.
+- **Least privilege** — Minimal permissions and scope.
+- **Security as a foundation** — Not an afterthought.
+- **Defined boundaries** — Frontend/backend contract is the boundary; do not deviate.
 
-In general, when JSON files are created or edited, they should be pretty printed with appropriate
-indenting for easy readability. 
+---
+
+# Commands and Tools
+
+- **Django:** `python manage.py` for all Django tasks (runserver, migrate, check, etc.).
+- **Tests:** Always use `pytest`.
+- **Linting:** `ruff check .`
+- **SAST:** `bandit -r . -c pyproject.toml`
+
+---
+
+# Code Style and Structure
+
+- Prefer **function-based views** (not class-based unless there is a clear benefit).
+- Use **type hints** in Python.
+- Keep `models.py` small; use a `models/` package if it grows.
+- Keep apps **self-contained**.
+- **JSON:** Pretty-print with consistent indentation when creating or editing JSON files.
+
+---
+
+# Boundaries and Don’ts
+
+- **Never** commit `.env` files or secrets.
+- **Always** ensure tests pass before submitting or considering a change complete.
+- **Do not** invent API request/response shapes or invocation details; use the contract’s `invocation` block and payload/response definitions only.
+- **Do not** create multiple feature branches at once; complete one feature and get its PR approved before starting the next.
+
+---
+
+# Source Control and Workflow
+
+1. Create a **new feature branch** for each feature from `./features/`.
+2. Implement **one feature at a time**. After implementation, open a PR against `develop` and wait for approval before moving to the next feature.
+3. After making changes, **update `./COMMIT_MSG.txt`** so that `git commit -a -F COMMIT_MSG.txt` produces an accurate commit message. After committing, clear the contents of `COMMIT_MSG.txt` that were used.
+
+---
+
+# Documentation
+
+- Update `./README.md` when you add or change functionality so it remains useful for anyone reading the project.
+
+---
 
 # Look and Feel
 
-The user interface should be clean and predominantly rendered in white and light gray so it is not jarring or unpleasant for the end users to look at. It should feel contemporary and well-organized. 
-It should be possible to provide a logo and to adjust the colors in a central place (e.g. in a single CSS file or similar location). 
+- Clean, predominantly **white and light gray**.
+- Contemporary and well-organized.
+- Logo and color palette configurable in **one central place** (e.g. a single CSS file or variables).
 
-## Cursor Cloud specific instructions
+---
 
-### Project overview
+# Cursor Cloud: Project Overview and Commands
 
-This is a Django-based admin console for AWS Secure Research Enclave (SRE) operations. The Django project is named `sre_console` and lives in the workspace root.
+This is a **Django** admin console for **AWS Secure Research Enclave (SRE)** operations. The Django project is named `sre_console` and lives in the workspace root.
 
-### Running services
-
-- **Dev server**: `source .venv/bin/activate && python manage.py runserver 0.0.0.0:8000`
-- **Database**: SQLite (default, no external DB required for development)
-- The dev superuser is `admin` / `admin` (created during initial setup)
-
-### Key commands (all run from `/workspace` with venv activated)
+## Running and Checking
 
 | Task | Command |
 |------|---------|
@@ -127,9 +157,11 @@ This is a Django-based admin console for AWS Secure Research Enclave (SRE) opera
 | Run migrations | `python manage.py migrate` |
 | Django system check | `python manage.py check` |
 
-### Caveats
+Run all commands from the workspace root with the venv activated. Dev server: `source .venv/bin/activate && python manage.py runserver 0.0.0.0:8000`. Database: **SQLite** (default); no external DB needed for development. Dev superuser: **admin** / **admin**.
 
-- `ALLOWED_HOSTS` is set to `["*"]` in `sre_console/settings.py` for development convenience.
-- Bandit reports the default Django `SECRET_KEY` as a low-severity finding — this is expected in development and not a real issue.
-- The `.venv` directory is in the workspace root and is gitignored. The update script recreates it if missing.
-- `db.sqlite3` is the development database — it is gitignored and can be safely deleted and recreated with `python manage.py migrate`.
+## Caveats
+
+- `ALLOWED_HOSTS` is `["*"]` in `sre_console/settings.py` for development.
+- Bandit may report the default Django `SECRET_KEY` as low severity — expected in dev, not a production concern.
+- `.venv` is in the workspace root and gitignored; it can be recreated if missing.
+- `db.sqlite3` is the dev database, gitignored; safe to delete and recreate with `python manage.py migrate`.

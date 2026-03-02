@@ -1,0 +1,38 @@
+# Contract: retrieve-workspace-encryption-key-aliases query
+# Proposed query for the frontend to populate the Encryption key alias dropdown on start pipeline pages.
+id: retrieve-workspace-encryption-key-aliases
+label: Retrieve workspace encryption key aliases
+function: Return a list of KMS key aliases available for WorkSpaces root/user volume encryption in the destination account.
+description: |
+  Queries the backend for KMS key aliases that can be used when launching
+  workspaces with encryption. Each item is an alias string (e.g. aws/workspaces)
+  for the dropdown. The default is typically aws/workspaces.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: retrieve-workspace-encryption-key-aliases
+    optional:
+      destination_account_id: string
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {"query": "retrieve-workspace-encryption-key-aliases"}
+    response = client.invoke(FunctionName="<SreQueryFunctionArn>", InvocationType="RequestResponse", Payload=json.dumps(payload))
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (list of {alias, label})
+    error: object with status, error, message
+
+inputs:
+  optional:
+    - destination_account_id
+
+outputs:
+  success:
+    list:
+      - alias
+      - label

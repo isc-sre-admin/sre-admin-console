@@ -12,6 +12,43 @@ description: |
   managed-instance playbook and domain-join-ec2-instance, then duo-unix playbook
   when duo_unix_secret_name is set.
 
+invocation:
+  target: ProvisionEC2InstanceStateMachine
+  stack_output_arn: ProvisionEC2InstanceStateMachineArn
+  description: Start the provision-ec2-instance Step Functions state machine; input is the execution input (pipeline inputs below).
+  method: stepfunctions.start_execution
+  payload:
+    required:
+      mode: verify | modify
+      destination_account_id: string
+      ami_id: string
+      copy_name: string
+      instance_type: string
+    optional:
+      instance_name: string
+      storage_settings: object
+      tag-resource-group: string
+      security_groups: array
+      security_group_ids: array
+      keypair_name: string
+      source_region: string
+      destination_region: string
+      domain_join_directory_name: string
+      domain_join_username: string
+      domain_join_password_secret_name: string
+      domain_join_computer_ou: string
+      domain_join_use_aws_document: boolean
+      duo_unix_secret_name: string
+      iam_instance_profile_name: string
+      ssm_registration_timeout_seconds: integer
+      install_dependencies: boolean
+  example_python: |
+    client = boto3.client("stepfunctions")
+    arn = "<from stack output ProvisionEC2InstanceStateMachineArn>"
+    response = client.start_execution(stateMachineArn=arn, input=json.dumps(payload))
+    execution_arn = response["executionArn"]
+  response: start_execution returns executionArn; poll describe_execution for status (RUNNING, SUCCEEDED, FAILED).
+
 inputs:
   required:
     - mode

@@ -128,3 +128,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
+
+# Backend: mock (default) or real Lambda/Step Functions. Set USE_MOCK_BACKEND = False
+# and configure AWS ARNs below to use the real backend.
+USE_MOCK_BACKEND = True
+# ARNs for real backend (required when USE_MOCK_BACKEND is False):
+# SRE_MANAGEMENT_FUNCTION_ARN = "arn:aws:lambda:..."
+# SRE_QUERY_FUNCTION_ARN = "arn:aws:lambda:..."
+# PROVISION_AD_CONNECTOR_STATE_MACHINE_ARN = "arn:aws:states:..."
+# PROVISION_WORKSPACE_STATE_MACHINE_ARN = "arn:aws:states:..."
+# PROVISION_WINDOWS_WORKSPACE_STATE_MACHINE_ARN = "arn:aws:states:..."
+# PROVISION_EC2_INSTANCE_STATE_MACHINE_ARN = "arn:aws:states:..."

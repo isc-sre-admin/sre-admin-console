@@ -5,6 +5,55 @@ function: Deploy Ansible playbook to an EC2/SSM managed node via AWS-ApplyAnsibl
 modes:
   verify: Assumes verifier role; runs SSM document in Ansible check mode (dry run). No changes on the instance; returns success when dry run completes without errors.
   modify: Assumes modifier role; runs playbook on the node. Creates or updates files/config per playbook; returns config_changed when playbook emits PLAYBOOK_CONFIG_CHANGED.
+
+# How the frontend (e.g. Python Django app) calls the serverless function to run this operation.
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously with a payload that includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: apply-ansible-playbook
+      mode: verify | modify
+      destination_account_id: string
+      node_id: string
+      playbook: string
+    optional:
+      secret_name: string
+      destination_region: string
+      username: string
+      playbook_s3_url: string
+      source_type: string
+      source_info: object
+      install_dependencies: boolean
+      output_s3_bucket_name: string
+      output_s3_key_prefix: string
+      node_ids: array
+      node_index: integer
+  example_python: |
+    import boto3
+    import json
+    client = boto3.client("lambda")
+    payload = {
+        "operation": "apply-ansible-playbook",
+        "mode": "modify",
+        "destination_account_id": "<account-id>",
+        "node_id": "<managed-instance-id>",
+        "playbook": "managed-workspace.yaml",
+    }
+    # Add any optional keys: secret_name, destination_region, username, playbook_s3_url, etc.
+    response = client.invoke(
+        FunctionName="<SreManagementFunctionArn>",
+        InvocationType="RequestResponse",
+        Payload=json.dumps(payload),
+    )
+    result = json.loads(response["Payload"].read())
+    # result["status"] in ("success", "error"); success includes config_changed; error includes error, message.
+  response:
+    success: object with status, config_changed
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

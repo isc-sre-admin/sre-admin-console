@@ -1,9 +1,8 @@
-# Contract: check-image-state operation
-id: check-image-state
-label: Check Image State
-function: Return WorkSpaces image state; used for pipeline polling until AVAILABLE.
-modes:
-  default: Read-only. Returns image state and ready when AVAILABLE. No mode parameter.
+# Contract: unlock-user operation (proposed)
+# Unlock an AD/WorkSpaces user account so they can sign in again.
+id: unlock-user
+label: Unlock User
+function: Unlock a user account in the directory so the user can sign in.
 
 invocation:
   target: SreManagementFunction
@@ -12,28 +11,23 @@ invocation:
   invocation_type: RequestResponse
   payload:
     required:
-      operation: check-image-state
-      image_id: string
-      destination_account_id: string
-    optional:
-      source_region: string
+      operation: unlock-user
+      username: string
+    optional: []
   example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
   response:
-    success: object with status, ready, state
+    success: object with status, message
     error: object with status, error, message
 
 inputs:
   required:
     - operation
-    - image_id
-    - destination_account_id
-  optional:
-    - source_region
+    - username
+  optional: []
 outputs:
   success:
     - status
-    - ready
-    - state
+    - message
   error:
     - status
     - error

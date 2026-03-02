@@ -5,6 +5,31 @@ function: Create GPO to run SSM hybrid activation script at startup on Windows W
 modes:
   verify: Runs OU guardrail (rejects default Computers OU or domain root); with instance_id and ou_path can report computer_count_in_ou and GPO status. No GPO creation.
   modify: Creates GPO on Windows instance; links to OU; configures startup script. Uses domain admin credentials from Secrets Manager in destination account.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: deploy-activation-gpo
+      mode: verify | modify
+      destination_account_id: string
+    optional:
+      instance_id: string
+      domain_admin_username: string
+      domain_admin_password_secret_name: string
+      gpo_name: string
+      startup_script_path: string
+      ou_path: string
+      destination_region: string
+      allow_broad_ou_override: boolean
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified, computer_count_in_ou
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

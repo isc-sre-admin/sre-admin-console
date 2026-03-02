@@ -5,6 +5,26 @@ function: Create local copy of shared AMI in destination account; idempotent by 
 modes:
   verify: Assumes verifier role; checks that a copy with the expected name exists in destination account.
   modify: Assumes modifier role; copies the shared AMI into destination account. Idempotent when copy with same name exists.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: copy-ami
+      mode: verify | modify
+      ami_id: string
+      destination_account_id: string
+    optional:
+      source_region: string
+      copy_name: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, new_ami_id
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

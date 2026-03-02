@@ -5,6 +5,26 @@ function: Deploy Penn client branding (logo, support link) to WorkSpaces directo
 modes:
   verify: Calls describe_client_branding; returns verified true if at least one device type has branding.
   modify: Calls import_client_branding with Penn logo, support link, and login message; idempotent (overwrites with same branding).
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: configure-workspace-branding
+      mode: verify | modify
+      destination_account_id: string
+    optional:
+      directory_id: string
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

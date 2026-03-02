@@ -5,6 +5,32 @@ function: Create or verify BCM Data Exports in org management account.
 modes:
   verify: No changes; returns per-export verified status and exports_that_would_be_created (exact create_export payloads).
   modify: Ensures each billing view has a data export (primary or per billing group). Idempotent; existing exports reported as already_exists.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-data-exports
+      mode: verify | modify
+      export_name_suffix: string
+      export_type: string
+      billing_view_type: string
+      s3_bucket: string
+      s3_path_prefix: string
+      destination_account_id: string
+    optional:
+      billing_group_name: string
+      s3_output_configuration: object
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified, exports_that_would_be_created
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

@@ -4,6 +4,24 @@ label: List Duo Auth Proxy Nodes
 function: List EC2 instances tagged Function duo-auth-proxy that are SSM-managed and Online.
 modes:
   default: Read-only. Returns node_ids and node_account_id. No mode parameter.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: list-duo-auth-proxy-nodes
+      destination_account_id: string
+    optional:
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, node_ids, node_account_id, tagged_count, ssm_online_count, message
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

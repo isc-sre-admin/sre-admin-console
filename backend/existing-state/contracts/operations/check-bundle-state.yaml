@@ -4,6 +4,24 @@ label: Check Bundle State
 function: Return WorkSpaces bundle state; used for pipeline polling until available.
 modes:
   default: Read-only. Returns bundle state and ready when available. No mode parameter.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: check-bundle-state
+      bundle_id: string
+      destination_account_id: string
+    optional:
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, ready, state
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

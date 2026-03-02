@@ -1,0 +1,38 @@
+# Contract: retrieve-workspace-hardware-types query
+# Proposed query for the frontend to populate the Hardware type dropdown on start pipeline pages.
+id: retrieve-workspace-hardware-types
+label: Retrieve workspace hardware types
+function: Return the list of WorkSpace bundle hardware types available for the given region (e.g. for provision-linux-workspace, provision-windows-workspace).
+description: |
+  Queries the backend for valid hardware type values. Each item includes the
+  API value (e.g. STANDARD, PERFORMANCE, POWER, POWERPRO) and a display label
+  for the console.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: retrieve-workspace-hardware-types
+    optional:
+      source_region: string
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {"query": "retrieve-workspace-hardware-types"}
+    response = client.invoke(FunctionName="<SreQueryFunctionArn>", InvocationType="RequestResponse", Payload=json.dumps(payload))
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (list of {value, label})
+    error: object with status, error, message
+
+inputs:
+  optional:
+    - source_region
+
+outputs:
+  success:
+    list:
+      - value
+      - label

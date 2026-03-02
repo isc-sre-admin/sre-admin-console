@@ -5,6 +5,25 @@ function: Share AMI and backing snapshots with destination account (source accou
 modes:
   verify: Checks that AMI and its snapshots are already shared with destination account.
   modify: Adds destination account to AMI launch permission and to each snapshot createVolumePermission.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: share-ami
+      mode: verify | modify
+      ami_id: string
+      destination_account_id: string
+    optional:
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

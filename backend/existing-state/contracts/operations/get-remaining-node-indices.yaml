@@ -4,6 +4,22 @@ label: Get Remaining Node Indices
 function: Return indices of nodes not yet processed (for multi-node apply in provision-ad-connector).
 modes:
   default: Returns array of indices (0-based) for nodes in node_ids that are not yet processed. No mode parameter.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: get-remaining-node-indices
+      node_ids: array
+    optional: []
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, remaining_indices
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

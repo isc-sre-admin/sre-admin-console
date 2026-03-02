@@ -5,6 +5,29 @@ function: Create WorkSpace image from existing WorkSpace; workspace must be AVAI
 modes:
   verify: Checks that an image with image_name exists in destination account. Returns verified true and image_id if found; no image_id when not found (pipeline branches to create-from-workspace).
   modify: Creates new WorkSpace image from workspace_id (must be AVAILABLE). Idempotent when image with same name already exists.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-workspace-image
+      mode: verify | modify
+      destination_account_id: string
+      image_name: string
+    optional:
+      workspace_id: string
+      destination_region: string
+      source_region: string
+      tag-research-group: string
+      tag-enclave-id: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, image_id, already_exists, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

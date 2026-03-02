@@ -5,6 +5,28 @@ function: Create AD groups and users; store passwords in Secrets Manager; idempo
 modes:
   verify: For each group checks existence; for each user checks existence (describe_user). Returns groups_would_be_created, users_already_exist, etc.
   modify: Ensures groups exist; creates users; sets passwords; stores user/password JSON in Secrets Manager. Idempotent (ConflictException skipped).
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-ad-users
+      mode: verify | modify
+      directory_id: string
+      ad_users: array
+      ad_users_secret_name: string
+    optional:
+      ad_groups: array
+      password_policy: object
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified, groups_would_be_created, groups_already_exist, users_would_be_created, users_already_exist
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

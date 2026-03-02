@@ -1,0 +1,47 @@
+# Contract: get-pipeline-step-logs query
+# Proposed query for stdout, stderr, and downloadContent logs for a pipeline step.
+id: get-pipeline-step-logs
+label: Get pipeline step logs
+function: Return stdout, stderr, and downloadContent (or equivalent) log streams for a step.
+description: |
+  Queries the backend (e.g. CloudWatch Logs in a known log group for the pipeline
+  or Lambda invocations) for a given execution and step. The frontend uses this
+  when the user expands a step to show input/output and, for failed steps, to
+  show the root cause. The backend may expose pre-aggregated logs (stdout, stderr,
+  downloadContent) so the console does not need direct CloudWatch query access.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: get-pipeline-step-logs
+      execution_id: string
+      execution_arn: string
+      step_id: string
+    optional: []
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {"query": "get-pipeline-step-logs", "execution_id": "...", "execution_arn": "..." , "step_id": "..."}
+    response = client.invoke(FunctionName="<SreQueryFunctionArn>", InvocationType="RequestResponse", Payload=json.dumps(payload))
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (step_id, stdout, stderr, download_content, error_message)
+    error: object with status, error, message
+
+inputs:
+  required:
+    - execution_id
+    - execution_arn
+    - step_id
+  optional: []
+
+outputs:
+  success:
+    step_id: string
+    stdout: string
+    stderr: string
+    download_content: string
+    error_message: string | null

@@ -5,6 +5,24 @@ function: Share WorkSpaces image with destination account.
 modes:
   verify: Checks that image is shared with destination; no change.
   modify: Shares the WorkSpaces image with the destination account.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: share-image
+      image_id: string
+      destination_account_id: string
+    optional:
+      mode: verify | modify
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

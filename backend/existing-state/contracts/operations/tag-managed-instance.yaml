@@ -5,6 +5,28 @@ function: Tag SSM managed instances (EndUser, ResearchGroup, EnclaveID, Name); o
 modes:
   verify: Checks that there are no untagged managed instances in the region; returns error VerificationFailed with untagged_instance_ids when any found.
   modify: Adds tags to untagged instances, or to the single instance matching activation_default_instance_name. Returns tagged_instance_ids.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: tag-managed-instance
+      destination_account_id: string
+      destination_region: string
+    optional:
+      tag-user-email: string
+      tag-research-group: string
+      tag-enclave-id: string
+      tag-username: string
+      activation_default_instance_name: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, tagged_instance_ids
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

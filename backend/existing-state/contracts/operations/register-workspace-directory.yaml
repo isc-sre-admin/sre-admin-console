@@ -4,6 +4,28 @@ label: Register Workspace Directory
 function: Register directory with WorkSpaces; apply defaults and optional ou_path; idempotent.
 modes:
   default: Registers directory; polls until REGISTERED; applies directory defaults (ModifyWorkspaceCreationProperties, etc.). Idempotent when already registered. No mode parameter.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: register-workspace-directory
+      destination_account_id: string
+      directory_id: string
+    optional:
+      subnet_ids: array
+      ou_path: string
+      security_group: string
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

@@ -5,6 +5,33 @@ function: Create or verify SSM hybrid activation; idempotent; stores activation 
 modes:
   verify: Checks for active activation with available capacity; returns verified true when found. Returns error VerificationFailed when none.
   modify: Reuses active activation with matching DefaultInstanceName and capacity when possible; otherwise creates new activation and stores in Secrets Manager. Idempotent; ssm_default_instance_name looks up existing activation.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-ssm-hybrid-activation
+      mode: verify | modify
+      destination_account_id: string
+      instance_limit: integer
+      iam_role: string
+    optional:
+      activation_description: string
+      activation_expiry_date: string
+      instance_name: string
+      username: string
+      user_name: string
+      ssm_default_instance_name: string
+      destination_region: string
+      source_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, activation_id, instance_name, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation

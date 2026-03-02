@@ -1,0 +1,62 @@
+# Contract: get-pipeline-execution-detail query
+# Proposed query for the pipeline execution detail screen (steps, current step, failure).
+id: get-pipeline-execution-detail
+label: Get pipeline execution detail
+function: Return execution status, list of steps with status, current step, and failure cause.
+description: |
+  Queries the backend (e.g. Step Functions DescribeExecution and GetExecutionHistory,
+  or an abstraction) for a single execution. The frontend uses this to render the
+  pipeline execution detail screen: high-level steps, which step is currently
+  executing, and for failed executions the failing step and root cause (error/cause).
+  Step list may be derived from the state machine definition or from execution
+  history events. Each step includes step_name, status (pending|running|succeeded|failed),
+  input (optional), output (optional), and for failed steps error and cause.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: get-pipeline-execution-detail
+      execution_id: string
+      execution_arn: string
+    optional: []
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {"query": "get-pipeline-execution-detail", "execution_id": "...", "execution_arn": "..."}
+    response = client.invoke(FunctionName="<SreQueryFunctionArn>", InvocationType="RequestResponse", Payload=json.dumps(payload))
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (execution_id, execution_arn, name, label, status, started_at, stopped_at, enclave_name, steps, current_step_index, failure_step_index, failure_cause)
+    error: object with status, error, message
+
+inputs:
+  required:
+    - execution_id
+    - execution_arn
+  optional: []
+
+outputs:
+  success:
+    execution_id: string
+    execution_arn: string
+    name: string
+    label: string
+    status: string
+    started_at: string
+    stopped_at: string | null
+    enclave_name: string
+    steps:
+      list:
+        - step_name
+        - step_id
+        - status
+        - input
+        - output
+        - error
+        - cause
+    current_step_index: int | null
+    failure_step_index: int | null
+    failure_cause: string | null

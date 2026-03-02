@@ -5,6 +5,35 @@ function: Deploy AD Connector in destination account; password from Secrets Mana
 modes:
   verify: Validates inputs, assumes destination role; checks that AD Connector with directory_dns_name exists. Returns verified true and directory_id if found; no secret lookup.
   modify: Reads password from Secrets Manager in source account; creates AD Connector in destination via STS assume role. Idempotent when connector already exists.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-ad-connector
+      mode: verify | modify
+      destination_account_id: string
+      directory_size: string
+      directory_dns_name: string
+      dns_ip_addresses: array
+      service_account_username: string
+      service_account_password_secret_name: string
+    optional:
+      vpc_id: string
+      vpc_name: string
+      subnet_ids: array
+      subnet_names: array
+      security_group_name: string
+      source_region: string
+      destination_region: string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, directory_id, verified
+    error: object with status, error, message
+
 inputs:
   required:
     - operation
