@@ -20,6 +20,8 @@ _SAMPLE_RECENT_IDS = (
     "b2c3d4e5-recent-ec2-failed",
     "b3c4d5e6-recent-ad-connector",
 )
+SAMPLE_ACTIVE_EXECUTION_IDS = _SAMPLE_ACTIVE_IDS
+SAMPLE_RECENT_EXECUTION_IDS = _SAMPLE_RECENT_IDS
 
 def _state_machine_arn_from_execution_arn(execution_arn: str) -> str:
     """Derive state machine ARN from execution ARN (execution:name:id -> stateMachine:name)."""
@@ -33,7 +35,10 @@ def _state_machine_arn_from_execution_arn(execution_arn: str) -> str:
 MOCK_ACTIVE_EXECUTIONS = [
     {
         "execution_id": _SAMPLE_ACTIVE_IDS[0],
-        "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{_SAMPLE_ACTIVE_IDS[0]}",
+        "execution_arn": (
+            "arn:aws:states:us-east-1:123456789012:execution:"
+            f"provision-ad-connector:{_SAMPLE_ACTIVE_IDS[0]}"
+        ),
         "name": "provision-ad-connector",
         "label": "Provision AD Connector",
         "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-ad-connector",
@@ -44,7 +49,10 @@ MOCK_ACTIVE_EXECUTIONS = [
     },
     {
         "execution_id": _SAMPLE_ACTIVE_IDS[1],
-        "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-linux-workspace:{_SAMPLE_ACTIVE_IDS[1]}",
+        "execution_arn": (
+            "arn:aws:states:us-east-1:123456789012:execution:"
+            f"provision-linux-workspace:{_SAMPLE_ACTIVE_IDS[1]}"
+        ),
         "name": "provision-linux-workspace",
         "label": "Provision Linux Workspace",
         "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-linux-workspace",
@@ -58,7 +66,10 @@ MOCK_ACTIVE_EXECUTIONS = [
 MOCK_RECENT_EXECUTIONS = [
     {
         "execution_id": _SAMPLE_RECENT_IDS[0],
-        "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-windows-workspace:{_SAMPLE_RECENT_IDS[0]}",
+        "execution_arn": (
+            "arn:aws:states:us-east-1:123456789012:execution:"
+            f"provision-windows-workspace:{_SAMPLE_RECENT_IDS[0]}"
+        ),
         "name": "provision-windows-workspace",
         "label": "Provision Windows Workspace",
         "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-windows-workspace",
@@ -69,7 +80,10 @@ MOCK_RECENT_EXECUTIONS = [
     },
     {
         "execution_id": _SAMPLE_RECENT_IDS[1],
-        "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-ec2-instance:{_SAMPLE_RECENT_IDS[1]}",
+        "execution_arn": (
+            "arn:aws:states:us-east-1:123456789012:execution:"
+            f"provision-ec2-instance:{_SAMPLE_RECENT_IDS[1]}"
+        ),
         "name": "provision-ec2-instance",
         "label": "Provision EC2 Instance",
         "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-ec2-instance",
@@ -80,7 +94,10 @@ MOCK_RECENT_EXECUTIONS = [
     },
     {
         "execution_id": _SAMPLE_RECENT_IDS[2],
-        "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{_SAMPLE_RECENT_IDS[2]}",
+        "execution_arn": (
+            "arn:aws:states:us-east-1:123456789012:execution:"
+            f"provision-ad-connector:{_SAMPLE_RECENT_IDS[2]}"
+        ),
         "name": "provision-ad-connector",
         "label": "Provision AD Connector",
         "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-ad-connector",
@@ -121,6 +138,52 @@ MOCK_USERNAMES = [
 MOCK_RUNNING_MODES = [
     {"value": "AUTO_STOP", "label": "Auto stop"},
     {"value": "ALWAYS_ON", "label": "Always on"},
+]
+
+MOCK_ENCLAVES = [
+    {
+        "research_group": "Neuroimaging",
+        "enclave_name": "sre-research-enclave-01",
+        "destination_account_id": "111111111111",
+    },
+    {
+        "research_group": "Genomics",
+        "enclave_name": "sre-research-enclave-02",
+        "destination_account_id": "222222222222",
+    },
+]
+
+MOCK_ENDPOINTS = [
+    {
+        "resource_type": "ec2",
+        "resource_id": "i-0a1b2c3d4e5f1111",
+        "name": "analytics-node-1111",
+        "region": "us-east-1",
+        "is_managed": True,
+        "node_id": "mi-0f1e2d3c4b5a1111",
+        "ssm_status": "Online",
+        "destination_account_id": "111111111111",
+    },
+    {
+        "resource_type": "workspace",
+        "resource_id": "ws-012345671111",
+        "name": "research-workspace-1111",
+        "region": "us-east-1",
+        "is_managed": True,
+        "node_id": "mi-1234abcd56781111",
+        "ssm_status": "Online",
+        "destination_account_id": "111111111111",
+    },
+    {
+        "resource_type": "ec2",
+        "resource_id": "i-09f8e7d6c5b41111",
+        "name": "batch-runner-1111",
+        "region": "us-east-1",
+        "is_managed": False,
+        "node_id": None,
+        "ssm_status": "Not registered",
+        "destination_account_id": "111111111111",
+    },
 ]
 
 # Execution detail mock: steps and failure cause for demo.
@@ -235,7 +298,10 @@ class MockBackend(Backend):
                 if pipeline_name and e.get("name") != pipeline_name:
                     continue
                 s = e.get("status", "")
-                if status_filter and s != status_filter:
+                if status_filter == "NOT_RUNNING":
+                    if s == "RUNNING":
+                        continue
+                elif status_filter and s != status_filter:
                     continue
                 combined.append({
                     "execution_id": e["execution_id"],
@@ -257,7 +323,11 @@ class MockBackend(Backend):
             execution_id = payload.get("execution_id")
             execution_arn = payload.get("execution_arn")
             if not execution_id or not execution_arn:
-                return {"status": "error", "error": "ValidationError", "message": "execution_id and execution_arn required."}
+                return {
+                    "status": "error",
+                    "error": "ValidationError",
+                    "message": "execution_id and execution_arn required.",
+                }
             rec = _execution_by_id(execution_id)
             if not rec:
                 return {"status": "error", "error": "NotFound", "message": f"Execution {execution_id} not found."}
@@ -312,5 +382,21 @@ class MockBackend(Backend):
 
         if query == "retrieve-workspace-running-modes":
             return {"status": "success", "result": list(MOCK_RUNNING_MODES)}
+
+        if query == "list-enclaves":
+            return {"status": "success", "result": list(MOCK_ENCLAVES)}
+
+        if query == "list-endpoints":
+            destination_account_id = payload.get("destination_account_id")
+            destination_region = payload.get("destination_region")
+            result = [
+                item
+                for item in MOCK_ENDPOINTS
+                if (
+                    (destination_account_id is None or item.get("destination_account_id") == destination_account_id)
+                    and (destination_region is None or item.get("region") == destination_region)
+                )
+            ]
+            return {"status": "success", "result": result}
 
         return {"status": "error", "error": "UnknownQuery", "message": f"Unknown query: {query}"}

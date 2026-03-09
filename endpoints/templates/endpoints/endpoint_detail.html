@@ -1,0 +1,210 @@
+{% extends "landing/base.html" %}
+
+{% block title %}Endpoint {{ endpoint.resource_id }} | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'landing:home' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'endpoints:index' %}">Endpoints</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'endpoints:enclave-detail' enclave_id=enclave.destination_account_id %}">{{ enclave.enclave_name }}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ endpoint.resource_id }}</li>
+    </ol>
+  </nav>
+
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">Endpoint detail</p>
+    <h2 class="mb-1">{{ endpoint.name }}</h2>
+    <p class="text-secondary mb-0">
+      {{ endpoint.resource_type|upper }} · {{ endpoint.resource_id }} · {{ endpoint.region }}
+    </p>
+    <div class="mt-2">
+      {% if endpoint.is_managed %}
+        <span class="badge text-bg-success">SSM registered</span>
+      {% else %}
+        <span class="badge text-bg-secondary">Not SSM registered</span>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h3 class="h5 mb-2">Connect via Session Manager</h3>
+      {% if endpoint.is_managed %}
+        <p class="text-secondary mb-2">Open Session Manager in AWS Console or use the CLI snippet below.</p>
+        <p class="mb-2">
+          <a
+            href="https://{{ endpoint.region }}.console.aws.amazon.com/systems-manager/session-manager?region={{ endpoint.region }}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open Session Manager in AWS Console
+          </a>
+        </p>
+        <div class="p-3 border rounded bg-light">
+          <code>aws ssm start-session --target {{ endpoint.node_id|default:endpoint.resource_id }} --region {{ endpoint.region }}</code>
+        </div>
+      {% else %}
+        <p class="mb-0 text-secondary">Register this endpoint with SSM to enable Session Manager and node operations.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="row g-4 mb-4">
+    <div class="col-12 col-xl-6">
+      <article class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h3 class="h5 mb-2">{{ ansible_contract.label }}</h3>
+          <p class="text-secondary small mb-3">{{ ansible_contract.function }}</p>
+          <div id="operation-result-apply-ansible-playbook" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+          <form id="operation-form-apply-ansible-playbook" novalidate>
+            {% csrf_token %}
+            <fieldset {% if not endpoint.is_managed %}disabled{% endif %}>
+              <div class="mb-3">
+                <label class="form-label" for="id-aa-mode">Mode</label>
+                <select class="form-select" id="id-aa-mode" name="mode" required>
+                  {% for mode in ansible_contract.mode_choices %}
+                    <option value="{{ mode }}" {% if mode == "modify" %}selected{% endif %}>{{ mode }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="id-aa-playbook">Playbook</label>
+                <input class="form-control" id="id-aa-playbook" name="playbook" value="{{ default_playbook }}" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="id-aa-destination-region">Destination region</label>
+                <input class="form-control" id="id-aa-destination-region" name="destination_region" value="{{ endpoint.region }}" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="id-aa-username">Username (optional)</label>
+                <input class="form-control" id="id-aa-username" name="username" />
+              </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="id-aa-install-deps" name="install_dependencies" />
+                <label class="form-check-label" for="id-aa-install-deps">Install dependencies</label>
+              </div>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                {% if not endpoint.is_managed %}disabled aria-disabled="true"{% endif %}
+              >
+                Run apply-ansible-playbook
+              </button>
+            </fieldset>
+          </form>
+        </div>
+      </article>
+    </div>
+    <div class="col-12 col-xl-6">
+      <article class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h3 class="h5 mb-2">{{ rerun_contract.label }}</h3>
+          <p class="text-secondary small mb-3">{{ rerun_contract.function }}</p>
+          <div id="operation-result-apply-playbook-to-node" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+          <form id="operation-form-apply-playbook-to-node" novalidate>
+            {% csrf_token %}
+            <fieldset {% if not endpoint.is_managed %}disabled{% endif %}>
+              <div class="mb-3">
+                <label class="form-label" for="id-apn-mode">Mode</label>
+                <select class="form-select" id="id-apn-mode" name="mode" required>
+                  {% for mode in rerun_contract.mode_choices %}
+                    <option value="{{ mode }}" {% if mode == "modify" %}selected{% endif %}>{{ mode }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="id-apn-playbook">Playbook</label>
+                <input class="form-control" id="id-apn-playbook" name="playbook" value="{{ default_playbook }}" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="id-apn-destination-region">Destination region</label>
+                <input class="form-control" id="id-apn-destination-region" name="destination_region" value="{{ endpoint.region }}" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="id-apn-username">Username (optional)</label>
+                <input class="form-control" id="id-apn-username" name="username" />
+              </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="id-apn-install-deps" name="install_dependencies" />
+                <label class="form-check-label" for="id-apn-install-deps">Install dependencies</label>
+              </div>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                {% if not endpoint.is_managed %}disabled aria-disabled="true"{% endif %}
+              >
+                Run apply-playbook-to-node
+              </button>
+            </fieldset>
+          </form>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-body">
+      <h3 class="h5 mb-3">Provisioning pipelines</h3>
+      <p class="text-secondary mb-3">Launch provisioning pipelines with this enclave pre-selected.</p>
+      <div class="d-grid gap-2 d-sm-flex">
+        <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-linux-workspace' %}?enclave={{ enclave.destination_account_id }}">
+          Provision Linux WorkSpace
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-windows-workspace' %}?enclave={{ enclave.destination_account_id }}">
+          Provision Windows WorkSpace
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-ec2-instance' %}?enclave={{ enclave.destination_account_id }}">
+          Provision EC2 Instance
+        </a>
+      </div>
+    </div>
+  </section>
+{% endblock content %}
+
+{% block extra_js %}
+  <script>
+    (function () {
+      function wireOperationForm(operationId) {
+        var form = document.getElementById('operation-form-' + operationId);
+        var resultEl = document.getElementById('operation-result-' + operationId);
+        if (!form || !resultEl) return;
+        var url = "{% url 'endpoints:execute-operation' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id operation_id='OPERATION_ID' %}".replace('OPERATION_ID', operationId);
+
+        function showResult(isSuccess, message) {
+          resultEl.className = 'alert mb-3 ' + (isSuccess ? 'alert-success' : 'alert-danger');
+          resultEl.textContent = message;
+          resultEl.classList.remove('d-none');
+        }
+
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          var formData = new FormData(form);
+          fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+          })
+          .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+          .then(function (result) {
+            if (result.ok && result.data.success) {
+              showResult(true, result.data.message || 'Operation request accepted.');
+            } else {
+              showResult(false, result.data.error || result.data.message || 'Operation failed.');
+            }
+          })
+          .catch(function () {
+            showResult(false, 'A network or server error occurred. Please try again.');
+          });
+        });
+      }
+
+      wireOperationForm('apply-ansible-playbook');
+      wireOperationForm('apply-playbook-to-node');
+    })();
+  </script>
+{% endblock extra_js %}

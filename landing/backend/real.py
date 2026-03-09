@@ -33,7 +33,10 @@ def _invoke_lambda(function_arn: str | None, payload: dict[str, Any]) -> dict[st
         return {
             "status": "error",
             "error": "ConfigurationError",
-            "message": "Real backend is enabled but SRE Lambda ARN is not configured. Set the appropriate ARN in settings.",
+            "message": (
+                "Real backend is enabled but SRE Lambda ARN is not configured. "
+                "Set the appropriate ARN in settings."
+            ),
         }
     logger.info(
         "real backend: invoking Lambda payload_keys=%s query=%s",
@@ -82,7 +85,10 @@ def _start_state_machine(state_machine_arn: str | None, payload: dict[str, Any])
         return {
             "status": "error",
             "error": "ConfigurationError",
-            "message": "Real backend is enabled but state machine ARN is not configured. Set the appropriate ARN in settings.",
+            "message": (
+                "Real backend is enabled but state machine ARN is not configured. "
+                "Set the appropriate ARN in settings."
+            ),
         }
     try:
         client = _get_boto_client("stepfunctions")

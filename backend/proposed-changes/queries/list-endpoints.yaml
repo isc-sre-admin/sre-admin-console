@@ -1,0 +1,59 @@
+# Contract: list-endpoints query
+# Proposed query for endpoint management screens to list EC2 and WorkSpaces in an enclave.
+id: list-endpoints
+label: List endpoints
+function: Return EC2 instances and WorkSpaces for a destination enclave account and region.
+description: |
+  Queries the backend for endpoint inventory within an enclave. The response is
+  designed for the endpoints app so operators can drill into endpoint details
+  and run node-scoped actions for SSM-registered endpoints.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: list-endpoints
+      destination_account_id: string
+      destination_region: string
+    optional:
+      include_unmanaged: boolean
+      resource_type_filter: string
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {
+      "query": "list-endpoints",
+      "destination_account_id": "<account-id>",
+      "destination_region": "us-east-1",
+      "include_unmanaged": True,
+    }
+    response = client.invoke(
+      FunctionName="<SreQueryFunctionArn>",
+      InvocationType="RequestResponse",
+      Payload=json.dumps(payload),
+    )
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (list of endpoint records)
+    error: object with status, error, message
+
+inputs:
+  required:
+    - destination_account_id
+    - destination_region
+  optional:
+    - include_unmanaged
+    - resource_type_filter
+
+outputs:
+  success:
+    list:
+      - resource_type
+      - resource_id
+      - name
+      - region
+      - is_managed
+      - node_id
+      - ssm_status

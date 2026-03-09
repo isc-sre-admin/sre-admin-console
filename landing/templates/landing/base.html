@@ -58,6 +58,7 @@
                   </ul>
                 </div>
               {% endif %}
+              <a href="{% url 'endpoints:index' %}" class="btn btn-outline-secondary btn-sm">Endpoints</a>
               <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
               <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
                 {% csrf_token %}

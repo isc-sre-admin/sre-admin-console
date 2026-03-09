@@ -3,7 +3,18 @@
 import pytest
 from django.contrib.auth import get_user_model
 
+from landing.backend import reset_backend
+
 User = get_user_model()
+
+
+@pytest.fixture(autouse=True)
+def use_mock_backend(settings):
+    """Keep tests deterministic by using the in-process mock backend."""
+    settings.USE_MOCK_BACKEND = True
+    reset_backend()
+    yield
+    reset_backend()
 
 
 @pytest.fixture

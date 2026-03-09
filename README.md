@@ -23,6 +23,19 @@ Short-running operations that need minimal input are available from an **Operati
 
 Quick operations are defined by YAML contracts under `backend/proposed-changes/operations/` (e.g. `unlock-user.yaml`). The console loads these and exposes them in the nav; the first supported operation is **Unlock user**.
 
+## Endpoint management
+
+The route `/endpoints/` provides enclave drill-down and endpoint management screens:
+
+- **Endpoints index**: List enclaves (research group, enclave, destination account) and open endpoint inventory by enclave.
+- **Enclave detail**: Show EC2 and WorkSpace endpoints for the enclave, including region and SSM registration status.
+- **Endpoint detail**: Show Session Manager connect guidance plus contract-driven node actions:
+  - `apply-ansible-playbook`
+  - `apply-playbook-to-node`
+- **Provisioning links**: Endpoint detail includes quick links to start the provision Linux/Windows WorkSpace and EC2 pipelines with `?enclave=<destination_account_id>` prefilled.
+
+Endpoint inventory data is requested via the proposed `list-endpoints` query contract. If the backend query is not implemented yet, the page shows sample rows so the UI remains usable for prototyping.
+
 ## Start pipeline execution
 
 The route `/pipelines/<pipeline_id>/start/` renders a shared start-execution screen for all backend pipelines:
