@@ -172,3 +172,19 @@ body.app-shell {
   outline: 2px solid var(--sre-primary);
   outline-offset: 2px;
 }
+
+.endpoint-row {
+  cursor: pointer;
+}
+
+.vuln-table-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.vuln-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--sre-card);
+}
