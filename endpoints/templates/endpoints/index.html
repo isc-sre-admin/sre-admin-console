@@ -16,6 +16,10 @@
     <p class="text-secondary mb-0">Select an enclave to review EC2 and WorkSpace endpoints and run node actions.</p>
   </section>
 
+  {% if backend_note %}
+    <div class="alert alert-info" role="status">{{ backend_note }}</div>
+  {% endif %}
+
   <section class="card border-0 shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">

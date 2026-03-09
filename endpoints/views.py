@@ -8,7 +8,7 @@ from django.shortcuts import render
 
 from endpoints.operation_contracts import get_endpoint_operation_contract
 from landing.backend import get_backend
-from landing.enclaves import SAMPLE_ENCLAVES, get_enclave_by_account_id
+from landing.enclaves import SAMPLE_ENCLAVES
 from landing.forms import DEFAULT_REGION, EnclaveOption
 
 SUPPORTED_RESOURCE_TYPES = {"ec2", "workspace"}
@@ -23,6 +23,8 @@ class EndpointRecord:
     is_managed: bool
     node_id: str | None
     ssm_status: str
+    last_patched_at: str | None = None
+    patch_managed: bool = False
 
 
 def _sample_endpoints_for_enclave(enclave_id: str, region: str) -> list[EndpointRecord]:
@@ -36,6 +38,8 @@ def _sample_endpoints_for_enclave(enclave_id: str, region: str) -> list[Endpoint
             is_managed=True,
             node_id=f"mi-0f1e2d3c4b5a{suffix}",
             ssm_status="Online",
+            last_patched_at="2025-07-21 14:32 UTC",
+            patch_managed=True,
         ),
         EndpointRecord(
             resource_type="workspace",
@@ -45,6 +49,8 @@ def _sample_endpoints_for_enclave(enclave_id: str, region: str) -> list[Endpoint
             is_managed=True,
             node_id=f"mi-1234abcd5678{suffix}",
             ssm_status="Online",
+            last_patched_at="2025-07-19 09:15 UTC",
+            patch_managed=True,
         ),
         EndpointRecord(
             resource_type="ec2",
@@ -54,6 +60,8 @@ def _sample_endpoints_for_enclave(enclave_id: str, region: str) -> list[Endpoint
             is_managed=False,
             node_id=None,
             ssm_status="Not registered",
+            last_patched_at=None,
+            patch_managed=False,
         ),
     ]
 
@@ -97,6 +105,10 @@ def _normalize_endpoint(item: dict[str, Any], *, region: str) -> EndpointRecord 
     if is_managed and node_id is None and resource_id.startswith("mi-"):
         node_id = resource_id
 
+    raw_last_patched = item.get("last_patched_at")
+    last_patched_at = str(raw_last_patched).strip() if raw_last_patched else None
+    patch_managed = _coerce_bool(item.get("patch_managed"))
+
     return EndpointRecord(
         resource_type=raw_type,
         resource_id=resource_id,
@@ -105,7 +117,42 @@ def _normalize_endpoint(item: dict[str, Any], *, region: str) -> EndpointRecord 
         is_managed=is_managed,
         node_id=node_id,
         ssm_status=ping_status or ("Online" if is_managed else "Not registered"),
+        last_patched_at=last_patched_at,
+        patch_managed=patch_managed,
     )
+
+
+def _load_enclaves() -> tuple[tuple[EnclaveOption, ...], bool, str | None]:
+    """Load enclave options from backend list-enclaves query, falling back to sample data.
+
+    Returns (enclaves, using_backend_data, backend_note).
+    """
+    payload = {"query": "list-enclaves"}
+    result = get_backend().run_query(payload)
+    if result.get("status") == "success":
+        enclaves: list[EnclaveOption] = []
+        for item in result.get("result") or []:
+            if not isinstance(item, dict):
+                continue
+            research_group = str(item.get("research_group") or "").strip()
+            enclave_name = str(item.get("enclave_name") or "").strip()
+            destination_account_id = str(item.get("destination_account_id") or "").strip()
+            if not enclave_name or not destination_account_id:
+                continue
+            if not research_group:
+                research_group = enclave_name
+            enclaves.append(
+                EnclaveOption(
+                    research_group=research_group,
+                    enclave_name=enclave_name,
+                    destination_account_id=destination_account_id,
+                )
+            )
+        if enclaves:
+            return tuple(enclaves), True, None
+
+    note = "Enclave list is not available from the backend yet. Showing sample enclaves for prototyping."
+    return SAMPLE_ENCLAVES, False, note
 
 
 def _load_endpoints_for_enclave(
@@ -134,8 +181,45 @@ def _load_endpoints_for_enclave(
     return _sample_endpoints_for_enclave(destination_account_id, region), False, note
 
 
+def _load_vulnerabilities_for_enclave(
+    destination_account_id: str,
+    *,
+    region: str,
+    resource_id: str | None = None,
+    category: str | None = None,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], bool, str | None]:
+    payload: dict[str, Any] = {
+        "query": "list-vulnerabilities",
+        "destination_account_id": destination_account_id,
+    }
+    if region:
+        payload["destination_region"] = region
+    if resource_id:
+        payload["resource_id"] = resource_id
+    if category:
+        payload["category"] = category
+    if filters:
+        payload["filters"] = filters
+
+    result = get_backend().run_query(payload)
+    if result.get("status") == "success":
+        records: list[dict[str, Any]] = []
+        for item in result.get("result") or []:
+            if isinstance(item, dict):
+                records.append(item)
+        return records, True, None
+
+    note = (
+        "Vulnerability data is not available from the backend yet. The table will be empty "
+        "until the list-vulnerabilities query is implemented."
+    )
+    return [], False, note
+
+
 def _get_enclave_or_404(enclave_id: str) -> EnclaveOption:
-    enclave = get_enclave_by_account_id(enclave_id)
+    enclaves, _, _ = _load_enclaves()
+    enclave = next((e for e in enclaves if e.destination_account_id == enclave_id), None)
     if enclave is None:
         raise Http404("Enclave not found.")
     return enclave
@@ -226,7 +310,13 @@ def _build_operation_payload(
 
 @login_required
 def endpoints_index(request: HttpRequest) -> HttpResponse:
-    return render(request, "endpoints/index.html", {"enclaves": SAMPLE_ENCLAVES})
+    enclaves, using_backend_data, backend_note = _load_enclaves()
+    context = {
+        "enclaves": enclaves,
+        "using_backend_data": using_backend_data,
+        "backend_note": backend_note,
+    }
+    return render(request, "endpoints/index.html", context)
 
 
 @login_required
@@ -278,6 +368,67 @@ def endpoint_detail(
         "default_playbook": default_playbook,
     }
     return render(request, "endpoints/endpoint_detail.html", context)
+
+
+@login_required
+def patch_detail(
+    request: HttpRequest,
+    enclave_id: str,
+    resource_type: str,
+    resource_id: str,
+) -> HttpResponse:
+    normalized_resource_type = resource_type.strip().lower()
+    if normalized_resource_type not in SUPPORTED_RESOURCE_TYPES:
+        raise Http404("Unsupported endpoint type.")
+
+    enclave = _get_enclave_or_404(enclave_id)
+    region = (request.GET.get("region") or "").strip() or DEFAULT_REGION
+    endpoint = _get_endpoint_or_404(
+        enclave_id=enclave.destination_account_id,
+        resource_type=normalized_resource_type,
+        resource_id=resource_id,
+        region=region,
+    )
+
+    context = {
+        "enclave": enclave,
+        "endpoint": endpoint,
+        "region": region,
+    }
+    return render(request, "endpoints/patch_detail.html", context)
+
+
+@login_required
+def enclave_vulnerabilities(request: HttpRequest, enclave_id: str) -> HttpResponse:
+    enclave = _get_enclave_or_404(enclave_id)
+    region = (request.GET.get("region") or "").strip() or DEFAULT_REGION
+    category = (request.GET.get("category") or "").strip() or None
+    resource_id = (request.GET.get("resource_id") or "").strip() or None
+
+    filters_param = request.GET.get("filters")
+    parsed_filters: dict[str, Any] | None = None
+    if filters_param:
+        try:
+            maybe_filters = json.loads(filters_param)
+        except json.JSONDecodeError:
+            maybe_filters = None
+        if isinstance(maybe_filters, dict):
+            parsed_filters = maybe_filters
+
+    vulnerabilities, using_backend_data, backend_note = _load_vulnerabilities_for_enclave(
+        enclave.destination_account_id,
+        region=region,
+        resource_id=resource_id or None,
+        category=category or None,
+        filters=parsed_filters,
+    )
+    return JsonResponse(
+        {
+            "vulnerabilities": vulnerabilities,
+            "using_backend_data": using_backend_data,
+            "backend_note": backend_note,
+        }
+    )
 
 
 @login_required

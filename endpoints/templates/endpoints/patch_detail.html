@@ -1,0 +1,107 @@
+{% extends "landing/base.html" %}
+
+{% block title %}Patching for {{ endpoint.resource_id }} | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'landing:home' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'endpoints:index' %}">Endpoints</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'endpoints:enclave-detail' enclave_id=enclave.destination_account_id %}">
+          {{ enclave.enclave_name }}
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'endpoints:endpoint-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}">
+          {{ endpoint.resource_id }}
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Patching</li>
+    </ol>
+  </nav>
+
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">Patching detail</p>
+    <h2 class="mb-1">{{ endpoint.name|default:endpoint.resource_id }}</h2>
+    <p class="text-secondary mb-0">
+      {{ endpoint.resource_type|upper }} · {{ endpoint.resource_id }} · {{ endpoint.region }}
+    </p>
+  </section>
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h3 class="h5 mb-3">Endpoint patching summary</h3>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <tbody>
+            <tr>
+              <th scope="row" class="w-25">Type</th>
+              <td>{{ endpoint.resource_type|upper }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Resource ID</th>
+              <td>{{ endpoint.resource_id }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Name</th>
+              <td>{{ endpoint.name }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Region</th>
+              <td>{{ endpoint.region }}</td>
+            </tr>
+            <tr>
+              <th scope="row">SSM managed</th>
+              <td>
+                {% if endpoint.is_managed %}
+                  <span class="badge text-bg-success">Yes</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">No</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">SSM status</th>
+              <td>{{ endpoint.ssm_status }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Patch Manager status</th>
+              <td>
+                {% if endpoint.patch_managed %}
+                  <span class="badge text-bg-success">Managed</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Not Managed</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Last patched</th>
+              <td>
+                {% if endpoint.patch_managed %}
+                  {% if endpoint.last_patched_at %}
+                    {{ endpoint.last_patched_at }}
+                  {% else %}
+                    Not yet patched
+                  {% endif %}
+                {% else %}
+                  Not Managed
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-body">
+      <h3 class="h5 mb-2">Patching history</h3>
+      <p class="text-secondary mb-0">
+        Detailed patching history and operation logs will appear here when backend support is added.
+      </p>
+    </div>
+  </section>
+{% endblock content %}
+

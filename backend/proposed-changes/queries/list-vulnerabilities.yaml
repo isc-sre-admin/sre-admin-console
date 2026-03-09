@@ -1,0 +1,75 @@
+# Contract: list-vulnerabilities query
+# Proposed query to return vulnerability findings for an enclave account from AWS Security Hub CSPM (Inspector).
+id: list-vulnerabilities
+label: List vulnerabilities
+function: Return vulnerability findings for an enclave account from AWS Security Hub CSPM (Inspector).
+description: |
+  Queries the backend for normalized vulnerability data associated with an enclave
+  account. The response is designed for the vulnerabilities panel on the enclave
+  detail screen so operators can review Actionable, Planned, and Informational
+  findings with flexible filtering.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: list-vulnerabilities
+      destination_account_id: string
+    optional:
+      destination_region: string
+      resource_id: string
+      category: string
+      filters: object
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {
+      "query": "list-vulnerabilities",
+      "destination_account_id": "<account-id>",
+      "destination_region": "us-east-1",
+      "category": "actionable",
+    }
+    response = client.invoke(
+      FunctionName="<SreQueryFunctionArn>",
+      InvocationType="RequestResponse",
+      Payload=json.dumps(payload),
+    )
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (list of vulnerability records)
+    error: object with status, error, message
+
+inputs:
+  required:
+    - destination_account_id
+  optional:
+    - destination_region
+    - resource_id
+    - category
+    - filters
+
+outputs:
+  success:
+    list:
+      - assessed_criticality
+      - status
+      - days_open
+      - days_actionable
+      - account_id
+      - finding_type
+      - package_name
+      - installed_version
+      - fixed_version
+      - vulnerability_id
+      - vulnerability_source
+      - vulnerability_reported_at
+      - fix_available
+      - exploit_available
+      - resource_type
+      - resource_id
+      - tag_name
+      - comments
+      - category
+

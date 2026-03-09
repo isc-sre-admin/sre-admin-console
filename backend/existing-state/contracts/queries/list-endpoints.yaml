@@ -57,5 +57,3 @@ outputs:
       - is_managed
       - node_id
       - ssm_status
-      - last_patched_at
-      - patch_managed

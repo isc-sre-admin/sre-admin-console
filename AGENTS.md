@@ -122,7 +122,7 @@ Contracts in `./backend/existing-state/contracts/` include an **`invocation`** a
 # Source Control and Workflow
 
 1. Create a **new feature branch** for each feature from `./features/`.
-2. Implement **one feature at a time**. After implementation, open a PR against `develop` and wait for approval before moving to the next feature.
+2. Implement **one feature at a time**. After implementation, open a PR against `main` and wait for approval before moving to the next feature.
 3. After making changes, **update `./COMMIT_MSG.txt`** so that `git commit -a -F COMMIT_MSG.txt` produces an accurate commit message. After committing, clear the contents of `COMMIT_MSG.txt` that were used.
 
 ---

@@ -1,0 +1,44 @@
+# Contract: list-enclaves query
+# Proposed query to return enclave metadata for endpoint and pipeline workflows.
+id: list-enclaves
+label: List enclaves
+function: Return available research group and enclave mappings for destination accounts.
+description: |
+  Provides enclave metadata used by the console for dropdowns and drill-down
+  pages. This allows replacing hardcoded sample enclave values with backend-owned
+  data when available.
+
+invocation:
+  target: SreQueryFunction
+  description: Invoke the SRE query Lambda synchronously; payload includes query and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      query: list-enclaves
+    optional:
+      include_inactive: boolean
+  example_python: |
+    client = boto3.client("lambda")
+    payload = {"query": "list-enclaves"}
+    response = client.invoke(
+      FunctionName="<SreQueryFunctionArn>",
+      InvocationType="RequestResponse",
+      Payload=json.dumps(payload),
+    )
+    result = json.loads(response["Payload"].read())
+  response:
+    success: object with status, result (list of enclave metadata)
+    error: object with status, error, message
+
+inputs:
+  required: []
+  optional:
+    - include_inactive
+
+outputs:
+  success:
+    list:
+      - research_group
+      - enclave_name
+      - destination_account_id
