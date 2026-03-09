@@ -4,19 +4,28 @@ from datetime import date, timedelta
 from typing import Any
 
 from django.conf import settings
-
-logger = logging.getLogger(__name__)
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 
 from landing.backend import get_backend
-from landing.forms import EnclaveOption, PipelineStartForm
+from landing.backend.mock import (
+    SAMPLE_ACTIVE_EXECUTION_IDS as MOCK_SAMPLE_ACTIVE_EXECUTION_IDS,
+)
+from landing.backend.mock import (
+    SAMPLE_RECENT_EXECUTION_IDS as MOCK_SAMPLE_RECENT_EXECUTION_IDS,
+)
+from landing.enclaves import SAMPLE_ENCLAVES
+from landing.forms import PipelineStartForm
 from landing.operation_contracts import get_operation_contract
 from landing.pipeline_contracts import get_pipeline_contract, list_pipeline_contracts
 
+logger = logging.getLogger(__name__)
+
 SESSION_STARTED_EXECUTIONS_KEY = "started_pipeline_executions"
+SAMPLE_ACTIVE_EXECUTION_IDS = MOCK_SAMPLE_ACTIVE_EXECUTION_IDS
+SAMPLE_RECENT_EXECUTION_IDS = MOCK_SAMPLE_RECENT_EXECUTION_IDS
 
 
 def _pipeline_id_display(pipeline_id: str | None) -> str:
@@ -27,29 +36,6 @@ def _pipeline_id_display(pipeline_id: str | None) -> str:
         return pipeline_id.split(":stateMachine:")[-1]
     return pipeline_id
 
-
-SAMPLE_ENCLAVES: tuple[EnclaveOption, ...] = (
-    EnclaveOption(
-        research_group="Neuroimaging",
-        enclave_name="sre-research-enclave-01",
-        destination_account_id="111111111111",
-    ),
-    EnclaveOption(
-        research_group="Genomics",
-        enclave_name="sre-research-enclave-02",
-        destination_account_id="222222222222",
-    ),
-    EnclaveOption(
-        research_group="Clinical Trials",
-        enclave_name="sre-research-enclave-03",
-        destination_account_id="333333333333",
-    ),
-    EnclaveOption(
-        research_group="Platform Engineering",
-        enclave_name="sre-dev-enclave-01",
-        destination_account_id="444444444444",
-    ),
-)
 
 def _get_ami_choices(source_region: str) -> list[tuple[str, str]]:
     """Return (ami_id, display_label) choices for the AMI dropdown via backend query."""
@@ -422,6 +408,12 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
     if "running_mode" in contract.all_inputs:
         running_mode_choices = _get_running_mode_choices()
 
+    selected_enclave = (request.GET.get("enclave") or "").strip()
+    valid_enclave_ids = {e.destination_account_id for e in SAMPLE_ENCLAVES}
+    form_initial: dict[str, Any] = {}
+    if selected_enclave and selected_enclave in valid_enclave_ids:
+        form_initial["enclave"] = selected_enclave
+
     started_execution: dict[str, Any] | None = None
     form = PipelineStartForm(
         request.POST or None,
@@ -434,6 +426,7 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
         encryption_key_alias_choices=encryption_key_alias_choices,
         username_choices=username_choices,
         running_mode_choices=running_mode_choices,
+        initial=form_initial,
     )
     if request.method == "POST":
         if form.is_valid():
@@ -483,7 +476,9 @@ def _get_all_executions_from_backend() -> list[dict[str, Any]]:
     """Return merged list of executions from all pipelines (for lookup by execution_id)."""
     backend = get_backend()
     all_executions: list[dict[str, Any]] = []
-    for payload in _list_pipeline_executions_payloads():
+    payloads = _list_pipeline_executions_payloads(status_filter="RUNNING")
+    payloads += _list_pipeline_executions_payloads(status_filter="NOT_RUNNING")
+    for payload in payloads:
         result = backend.run_query(payload)
         if result.get("status") == "success":
             for e in result.get("result") or []:
@@ -494,7 +489,8 @@ def _get_all_executions_from_backend() -> list[dict[str, Any]]:
                 row.setdefault("started_at_full", row.get("started_at", ""))
                 row.setdefault("completed_at", row.get("stopped_at"))
                 row["status"] = _status_display(row.get("status", ""))
-                all_executions.append(row)
+                if not any(item.get("execution_id") == row.get("execution_id") for item in all_executions):
+                    all_executions.append(row)
     return all_executions
 
 

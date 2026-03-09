@@ -266,7 +266,11 @@ class PipelineStartForm(forms.Form):
 
         if input_name == "encryption_key_alias":
             choices = [("", "Select encryption key alias")] + self._encryption_key_alias_choices
-            initial = self._encryption_key_alias_choices[0][0] if self._encryption_key_alias_choices else "aws/workspaces"
+            initial = (
+                self._encryption_key_alias_choices[0][0]
+                if self._encryption_key_alias_choices
+                else "aws/workspaces"
+            )
             return forms.ChoiceField(
                 label="Encryption key alias",
                 required=required,
