@@ -71,7 +71,12 @@
     </div>
   </section>
 
-  <section>
+  <section
+    id="pipeline-activity"
+    data-poll-interval="{{ poll_interval_seconds }}"
+    data-execution-detail-url-template="{{ execution_detail_url_template }}"
+    data-pipeline-executions-api-url="{% url 'landing:pipeline-executions-json' %}"
+  >
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
       <div>
         <h2 class="h4 mb-1">Pipeline activity</h2>
@@ -80,7 +85,7 @@
       <span class="badge text-bg-light">Sample data shown until API integration is enabled</span>
     </div>
 
-    <ul class="nav nav-tabs mb-3" id="pipeline-tabs" role="tablist">
+    <ul class="nav nav-tabs mb-0" id="pipeline-tabs" role="tablist">
       <li class="nav-item" role="presentation">
         <button
           class="nav-link active"
@@ -121,13 +126,13 @@
             <thead>
               <tr>
                 <th scope="col">Pipeline</th>
-                <th scope="col">Enclave</th>
+                <th scope="col">Pipeline Id</th>
                 <th scope="col">Started</th>
                 <th scope="col">Status</th>
                 <th scope="col" class="text-end">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="active-executions-tbody">
               {% for execution in active_executions %}
                 <tr>
                   <td>
@@ -137,7 +142,7 @@
                       {{ execution.label|default:execution.name }}
                     {% endif %}
                   </td>
-                  <td>{{ execution.enclave }}</td>
+                  <td>{{ execution.pipeline_id_display|default:execution.pipeline_id }}</td>
                   <td>{{ execution.started_at }}</td>
                   <td><span class="badge status-running">{{ execution.status }}</span></td>
                   <td class="text-end">
@@ -185,12 +190,12 @@
             <thead>
               <tr>
                 <th scope="col">Pipeline</th>
-                <th scope="col">Enclave</th>
+                <th scope="col">Pipeline Id</th>
                 <th scope="col">Completed</th>
                 <th scope="col">Result</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="recent-executions-tbody">
               {% for execution in recent_executions %}
                 <tr>
                   <td>
@@ -200,7 +205,7 @@
                       {{ execution.label|default:execution.name }}
                     {% endif %}
                   </td>
-                  <td>{{ execution.enclave }}</td>
+                  <td>{{ execution.pipeline_id_display|default:execution.pipeline_id }}</td>
                   <td>{{ execution.completed_at }}</td>
                   <td>
                     {% if execution.status == "Succeeded" %}
@@ -219,4 +224,117 @@
       </div>
     </div>
   </section>
+
+  <script>
+    (function () {
+      var section = document.getElementById('pipeline-activity');
+      if (!section) return;
+      var pollInterval = parseInt(section.getAttribute('data-poll-interval'), 10);
+      var urlTemplate = section.getAttribute('data-execution-detail-url-template') || '';
+      var apiUrl = section.getAttribute('data-pipeline-executions-api-url');
+      if (!apiUrl || !Number.isFinite(pollInterval) || pollInterval <= 0) return;
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function detailUrl(executionId) {
+        return urlTemplate.replace('EXECUTION_ID', escapeHtml(executionId));
+      }
+
+      function renderActiveRows(executions) {
+        return (executions || []).map(function (e) {
+          var label = escapeHtml(e.label || e.name || '');
+          var pipelineId = escapeHtml(e.pipeline_id_display || e.pipeline_id || '');
+          var startedAt = escapeHtml(e.started_at || '');
+          var status = escapeHtml(e.status || '');
+          var id = e.execution_id;
+          var link = id ? '<a href="' + detailUrl(id) + '">' + label + '</a>' : label;
+          var action = id ? '<a href="' + detailUrl(id) + '">View details</a>' : '<span class="text-secondary">-</span>';
+          return '<tr><td>' + link + '</td><td>' + pipelineId + '</td><td>' + startedAt + '</td><td><span class="badge status-running">' + status + '</span></td><td class="text-end">' + action + '</td></tr>';
+        }).join('');
+      }
+
+      function statusBadgeClass(status) {
+        if (status === 'Succeeded') return 'status-succeeded';
+        if (status === 'Failed') return 'status-failed';
+        return 'text-bg-secondary';
+      }
+
+      function renderRecentRows(executions) {
+        return (executions || []).map(function (e) {
+          var label = escapeHtml(e.label || e.name || '');
+          var pipelineId = escapeHtml(e.pipeline_id_display || e.pipeline_id || '');
+          var completedAt = escapeHtml(e.completed_at || '');
+          var status = escapeHtml(e.status || '');
+          var id = e.execution_id;
+          var link = id ? '<a href="' + detailUrl(id) + '">' + label + '</a>' : label;
+          return '<tr><td>' + link + '</td><td>' + pipelineId + '</td><td>' + completedAt + '</td><td><span class="badge ' + statusBadgeClass(e.status) + '">' + status + '</span></td></tr>';
+        }).join('');
+      }
+
+      function buildApiUrl() {
+        var url = apiUrl;
+        var params = [];
+        var historyTab = document.getElementById('history-tab');
+        var isHistoryActive =
+          historyTab && (historyTab.classList.contains('active') || historyTab.getAttribute('aria-selected') === 'true');
+        var startInput = document.getElementById('start-date');
+        var endInput = document.getElementById('end-date');
+
+        if (isHistoryActive) {
+          params.push('scope=history');
+          if (startInput && startInput.value) {
+            params.push('start_date=' + encodeURIComponent(startInput.value));
+          }
+          if (endInput && endInput.value) {
+            params.push('end_date=' + encodeURIComponent(endInput.value));
+          }
+        } else {
+          params.push('scope=active');
+        }
+
+        if (params.length) {
+          url += (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+        }
+
+        if (url.indexOf('http') !== 0) {
+          url = window.location.origin + (url.indexOf('/') === 0 ? '' : '/') + url;
+        }
+        return url;
+      }
+
+      function refresh() {
+        var url = buildApiUrl();
+        fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+          .then(function (r) {
+            if (!r.ok) return;
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data) return;
+            var activeTbody = document.getElementById('active-executions-tbody');
+            var recentTbody = document.getElementById('recent-executions-tbody');
+            if (activeTbody && Array.isArray(data.active_executions)) {
+              activeTbody.innerHTML = renderActiveRows(data.active_executions);
+            }
+            if (recentTbody && Array.isArray(data.recent_executions)) {
+              recentTbody.innerHTML = renderRecentRows(data.recent_executions);
+            }
+          })
+          .catch(function () {});
+      }
+
+      refresh();
+      setInterval(refresh, pollInterval * 1000);
+
+      var tabList = document.getElementById('pipeline-tabs');
+      if (tabList) {
+        tabList.addEventListener('shown.bs.tab', function () { refresh(); });
+      }
+    })();
+  </script>
 {% endblock content %}

@@ -30,7 +30,7 @@ invocation:
     response = client.invoke(FunctionName="<SreQueryFunctionArn>", InvocationType="RequestResponse", Payload=json.dumps(payload))
     result = json.loads(response["Payload"].read())
   response:
-    success: object with status, result (list of execution_id, execution_arn, name, status, started_at, stopped_at, enclave_name, label)
+    success: object with status, result (list of execution_id, execution_arn, name, pipeline_id, status, started_at, stopped_at, enclave_name, label)
     error: object with status, error, message
 
 inputs:
@@ -48,6 +48,7 @@ outputs:
       - execution_id
       - execution_arn
       - name
+      - pipeline_id
       - status
       - started_at
       - stopped_at

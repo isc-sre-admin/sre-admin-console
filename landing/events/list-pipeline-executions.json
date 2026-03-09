@@ -1,0 +1,12 @@
+{
+  "query": "list-pipeline-executions",
+  "pipeline_ids": 
+    [
+      "provision-ad-connector",
+      "provision-linux-workspace",
+      "provision-windows-workspace",
+      "provision-ec2-instance"
+    ],
+  "status_filter": "RUNNING",
+  "max_results": 20
+}

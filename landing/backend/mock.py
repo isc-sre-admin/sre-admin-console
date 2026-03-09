@@ -21,12 +21,22 @@ _SAMPLE_RECENT_IDS = (
     "b3c4d5e6-recent-ad-connector",
 )
 
+def _state_machine_arn_from_execution_arn(execution_arn: str) -> str:
+    """Derive state machine ARN from execution ARN (execution:name:id -> stateMachine:name)."""
+    if ":execution:" in execution_arn:
+        prefix, _, rest = execution_arn.partition(":execution:")
+        name_part = rest.rsplit(":", 1)[0]
+        return f"{prefix}:stateMachine:{name_part}"
+    return execution_arn
+
+
 MOCK_ACTIVE_EXECUTIONS = [
     {
         "execution_id": _SAMPLE_ACTIVE_IDS[0],
         "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{_SAMPLE_ACTIVE_IDS[0]}",
         "name": "provision-ad-connector",
         "label": "Provision AD Connector",
+        "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-ad-connector",
         "enclave_name": "sre-dev-enclave-01",
         "started_at": "6 minutes ago",
         "stopped_at": None,
@@ -37,6 +47,7 @@ MOCK_ACTIVE_EXECUTIONS = [
         "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-linux-workspace:{_SAMPLE_ACTIVE_IDS[1]}",
         "name": "provision-linux-workspace",
         "label": "Provision Linux Workspace",
+        "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-linux-workspace",
         "enclave_name": "sre-research-enclave-02",
         "started_at": "18 minutes ago",
         "stopped_at": None,
@@ -50,6 +61,7 @@ MOCK_RECENT_EXECUTIONS = [
         "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-windows-workspace:{_SAMPLE_RECENT_IDS[0]}",
         "name": "provision-windows-workspace",
         "label": "Provision Windows Workspace",
+        "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-windows-workspace",
         "enclave_name": "sre-research-enclave-01",
         "started_at": "Today, 09:15 UTC",
         "stopped_at": "Today, 09:42 UTC",
@@ -60,6 +72,7 @@ MOCK_RECENT_EXECUTIONS = [
         "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-ec2-instance:{_SAMPLE_RECENT_IDS[1]}",
         "name": "provision-ec2-instance",
         "label": "Provision EC2 Instance",
+        "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-ec2-instance",
         "enclave_name": "sre-research-enclave-03",
         "started_at": "Today, 08:00 UTC",
         "stopped_at": "Today, 08:17 UTC",
@@ -70,6 +83,7 @@ MOCK_RECENT_EXECUTIONS = [
         "execution_arn": f"arn:aws:states:us-east-1:123456789012:execution:provision-ad-connector:{_SAMPLE_RECENT_IDS[2]}",
         "name": "provision-ad-connector",
         "label": "Provision AD Connector",
+        "pipeline_id": "arn:aws:states:us-east-1:123456789012:stateMachine:provision-ad-connector",
         "enclave_name": "sre-dev-enclave-01",
         "started_at": "Yesterday, 19:30 UTC",
         "stopped_at": "Yesterday, 20:06 UTC",
@@ -208,10 +222,17 @@ class MockBackend(Backend):
 
         if query == "list-pipeline-executions":
             pipeline_id = payload.get("pipeline_id")
+            # Accept state machine ARN or short name: extract name after :stateMachine: for filtering
+            pipeline_name = None
+            if pipeline_id:
+                if ":stateMachine:" in pipeline_id:
+                    pipeline_name = pipeline_id.split(":stateMachine:")[-1].split(":")[0]
+                else:
+                    pipeline_name = pipeline_id
             status_filter = (payload.get("status_filter") or "").strip().upper()
             combined = []
             for e in MOCK_ACTIVE_EXECUTIONS + MOCK_RECENT_EXECUTIONS:
-                if pipeline_id and e.get("name") != pipeline_id:
+                if pipeline_name and e.get("name") != pipeline_name:
                     continue
                 s = e.get("status", "")
                 if status_filter and s != status_filter:
@@ -221,6 +242,7 @@ class MockBackend(Backend):
                     "execution_arn": e["execution_arn"],
                     "name": e["name"],
                     "label": e["label"],
+                    "pipeline_id": e.get("pipeline_id") or _state_machine_arn_from_execution_arn(e["execution_arn"]),
                     "status": e["status"],
                     "started_at": e["started_at"],
                     "stopped_at": e.get("stopped_at"),
@@ -242,6 +264,9 @@ class MockBackend(Backend):
             name = rec.get("name", "")
             status = rec.get("status", "RUNNING")
             steps, current_index, failure_index, failure_cause = _mock_steps_for_execution(name, status)
+            pipeline_id_val = rec.get("pipeline_id") or _state_machine_arn_from_execution_arn(
+                rec["execution_arn"]
+            )
             return {
                 "status": "success",
                 "result": {
@@ -249,6 +274,7 @@ class MockBackend(Backend):
                     "execution_arn": rec["execution_arn"],
                     "name": rec["name"],
                     "label": rec["label"],
+                    "pipeline_id": pipeline_id_val,
                     "status": rec["status"],
                     "started_at": rec["started_at"],
                     "stopped_at": rec.get("stopped_at"),

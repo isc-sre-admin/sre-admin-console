@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from django.conf import settings
 
 from landing.backend.base import Backend
+
+logger = logging.getLogger(__name__)
 
 # Stack output / config keys for ARNs (must match contract stack_output_arn or logical names).
 MANAGEMENT_FUNCTION_ARN_SETTING = "SRE_MANAGEMENT_FUNCTION_ARN"
@@ -32,6 +35,11 @@ def _invoke_lambda(function_arn: str | None, payload: dict[str, Any]) -> dict[st
             "error": "ConfigurationError",
             "message": "Real backend is enabled but SRE Lambda ARN is not configured. Set the appropriate ARN in settings.",
         }
+    logger.info(
+        "real backend: invoking Lambda payload_keys=%s query=%s",
+        list(payload.keys()),
+        payload.get("query"),
+    )
     try:
         client = _get_boto_client("lambda")
         response = client.invoke(
@@ -41,6 +49,21 @@ def _invoke_lambda(function_arn: str | None, payload: dict[str, Any]) -> dict[st
         )
         raw = response["Payload"].read()
         result = json.loads(raw) if isinstance(raw, bytes) else json.load(raw)
+        result_status = result.get("status")
+        result_list = result.get("result")
+        result_count = len(result_list) if isinstance(result_list, list) else None
+        logger.info(
+            "real backend: Lambda response status=%s result_count=%s keys=%s",
+            result_status,
+            result_count,
+            list(result.keys()) if isinstance(result, dict) else None,
+        )
+        if result.get("status") != "success":
+            logger.warning(
+                "real backend: Lambda error=%s message=%s",
+                result.get("error"),
+                result.get("message"),
+            )
         # Normalize: backend may return status/result or status/error/message
         if result.get("status") == "error" or "error" in result:
             return {
@@ -50,6 +73,7 @@ def _invoke_lambda(function_arn: str | None, payload: dict[str, Any]) -> dict[st
             }
         return result
     except Exception as e:  # noqa: BLE001
+        logger.exception("real backend: Lambda invoke failed")
         return {"status": "error", "error": type(e).__name__, "message": str(e)}
 
 
@@ -104,4 +128,9 @@ class RealBackend(Backend):
 
     def run_query(self, payload: dict[str, Any]) -> dict[str, Any]:
         arn = getattr(settings, QUERY_FUNCTION_ARN_SETTING, None)
+        payload = dict(payload)
+        stack_name = getattr(settings, "SRE_STACK_NAME", None)
+        if stack_name:
+            payload["stack-name"] = stack_name
+            logger.debug("real backend: added stack-name=%s to query payload", stack_name)
         return _invoke_lambda(arn, payload)

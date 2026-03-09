@@ -36,10 +36,10 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
-# Local / env (uncomment if you use .env)
-# .env
-# .env.local
-# *.local
+# Local / env
+.env
+.env.local
+*.local
 
 # Database
 db.sqlite3

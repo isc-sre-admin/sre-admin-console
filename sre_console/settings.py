@@ -10,11 +10,26 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from a local .env file if present so ARNs and other
+# environment-specific settings are not committed to source control.
+env_path = BASE_DIR / ".env"
+if env_path.exists():
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            # .env values take precedence over any existing environment variables.
+            os.environ[key] = value
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -130,12 +145,31 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
 # Backend: mock (default) or real Lambda/Step Functions. Set USE_MOCK_BACKEND = False
-# and configure AWS ARNs below to use the real backend.
-USE_MOCK_BACKEND = True
-# ARNs for real backend (required when USE_MOCK_BACKEND is False):
-# SRE_MANAGEMENT_FUNCTION_ARN = "arn:aws:lambda:..."
-# SRE_QUERY_FUNCTION_ARN = "arn:aws:lambda:..."
-# PROVISION_AD_CONNECTOR_STATE_MACHINE_ARN = "arn:aws:states:..."
-# PROVISION_WORKSPACE_STATE_MACHINE_ARN = "arn:aws:states:..."
-# PROVISION_WINDOWS_WORKSPACE_STATE_MACHINE_ARN = "arn:aws:states:..."
-# PROVISION_EC2_INSTANCE_STATE_MACHINE_ARN = "arn:aws:states:..."
+# and configure AWS ARNs below (via environment variables or .env) to use the real backend.
+USE_MOCK_BACKEND = False
+# Stack name passed to query Lambda (e.g. list-pipeline-executions) so it knows which stack to use.
+SRE_STACK_NAME = os.getenv("SRE_STACK_NAME", "sre-management")
+# ARNs for real backend (required when USE_MOCK_BACKEND is False). These should be provided
+# via environment variables or a local .env file that is not committed to source control.
+SRE_MANAGEMENT_FUNCTION_ARN = os.getenv("SRE_MANAGEMENT_FUNCTION_ARN")
+SRE_QUERY_FUNCTION_ARN = os.getenv("SRE_QUERY_FUNCTION_ARN")
+PROVISION_AD_CONNECTOR_STATE_MACHINE_ARN = os.getenv("PROVISION_AD_CONNECTOR_STATE_MACHINE_ARN")
+PROVISION_WORKSPACE_STATE_MACHINE_ARN = os.getenv("PROVISION_WORKSPACE_STATE_MACHINE_ARN")
+PROVISION_WINDOWS_WORKSPACE_STATE_MACHINE_ARN = os.getenv("PROVISION_WINDOWS_WORKSPACE_STATE_MACHINE_ARN")
+PROVISION_EC2_INSTANCE_STATE_MACHINE_ARN = os.getenv("PROVISION_EC2_INSTANCE_STATE_MACHINE_ARN")
+
+# Landing page: pipeline activity table refresh interval (seconds). Set to 0 to disable polling.
+LANDING_PIPELINE_POLL_INTERVAL_SECONDS = 60
+
+# Logging: show INFO from landing and real backend so pipeline-executions API is debuggable in console.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "landing": {"level": "INFO", "handlers": ["console"]},
+        "landing.backend": {"level": "INFO", "handlers": ["console"]},
+    },
+}

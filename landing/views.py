@@ -1,11 +1,15 @@
 import json
+import logging
 from datetime import date, timedelta
 from typing import Any
 
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
-from django.utils import timezone
+from django.urls import reverse
 
 from landing.backend import get_backend
 from landing.forms import EnclaveOption, PipelineStartForm
@@ -13,6 +17,16 @@ from landing.operation_contracts import get_operation_contract
 from landing.pipeline_contracts import get_pipeline_contract, list_pipeline_contracts
 
 SESSION_STARTED_EXECUTIONS_KEY = "started_pipeline_executions"
+
+
+def _pipeline_id_display(pipeline_id: str | None) -> str:
+    """Return a short display value for pipeline_id (state machine name from ARN or as-is)."""
+    if not pipeline_id:
+        return ""
+    if pipeline_id.startswith("arn:") and ":stateMachine:" in pipeline_id:
+        return pipeline_id.split(":stateMachine:")[-1]
+    return pipeline_id
+
 
 SAMPLE_ENCLAVES: tuple[EnclaveOption, ...] = (
     EnclaveOption(
@@ -126,7 +140,13 @@ def _start_pipeline_execution(pipeline_id: str, payload: dict[str, Any]) -> dict
     return get_backend().start_pipeline(pipeline_id, payload)
 
 
-def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], enclave_name: str) -> None:
+def _save_execution_to_session(
+    request: HttpRequest,
+    execution: dict[str, Any],
+    enclave_name: str,
+    *,
+    pipeline_id: str | None = None,
+) -> None:
     started_executions = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
     record = {
         "execution_id": execution["execution_id"],
@@ -134,6 +154,7 @@ def _save_execution_to_session(request: HttpRequest, execution: dict[str, Any], 
         "name": execution["name"],
         "status": execution["status"],
         "enclave": enclave_name,
+        "pipeline_id": pipeline_id or execution.get("name", ""),
         "started_at": execution["started_at_relative"],
         "started_at_full": execution["started_at"],
     }
@@ -203,27 +224,111 @@ def _status_display(raw: str) -> str:
     return raw or "Unknown"
 
 
+def _load_list_pipeline_executions_event() -> dict[str, Any] | None:
+    """Load list-pipeline-executions event payload from landing/events/list-pipeline-executions.json."""
+    path = settings.BASE_DIR / "landing" / "events" / "list-pipeline-executions.json"
+    if not path.exists():
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _list_pipeline_executions_payloads(
+    status_filter: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> list[dict[str, Any]]:
+    """Build payload(s) for list-pipeline-executions.
+
+    When event file has pipeline_ids, return one payload (Lambda expects
+    pipeline_ids in a single call). Otherwise one payload per pipeline_id
+    from contracts. Optional status_filter/start_date/end_date are applied
+    on top of the event file or base payload.
+    """
+    event = _load_list_pipeline_executions_event()
+    if event and event.get("pipeline_ids"):
+        # Lambda accepts the event-file shape with pipeline_ids (plural) in one invocation.
+        payload = dict(event)
+        if status_filter is not None:
+            payload["status_filter"] = status_filter
+        if start_date is not None:
+            payload["start_date"] = start_date
+        if end_date is not None:
+            payload["end_date"] = end_date
+        return [payload]
+    base: dict[str, Any] = {"query": "list-pipeline-executions"}
+    if status_filter is not None:
+        base["status_filter"] = status_filter
+    if start_date is not None:
+        base["start_date"] = start_date
+    if end_date is not None:
+        base["end_date"] = end_date
+    if event and event.get("max_results") is not None:
+        base["max_results"] = event["max_results"]
+    pipeline_ids = [c.id for c in list_pipeline_contracts()]
+    return [{**base, "pipeline_id": pid} for pid in pipeline_ids]
+
+
 def _executions_from_backend(request: HttpRequest) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Fetch pipeline executions from backend and merge with session-started; return (active, recent)."""
     backend = get_backend()
+    scope = request.GET.get("scope") if request.method == "GET" else None
+    start_date_param = request.GET.get("start_date") or None
+    end_date_param = request.GET.get("end_date") or None
+    status_filter = "NOT_RUNNING" if scope == "history" else None
+    payloads = _list_pipeline_executions_payloads(
+        status_filter=status_filter,
+        start_date=start_date_param,
+        end_date=end_date_param,
+    )
+    logger.info("pipeline-executions: using %s payload(s), backend=%s", len(payloads), type(backend).__name__)
     all_executions: list[dict[str, Any]] = []
-    for contract in list_pipeline_contracts():
-        result = backend.run_query({
-            "query": "list-pipeline-executions",
-            "pipeline_id": contract.id,
-        })
+    for i, payload in enumerate(payloads):
+        result = backend.run_query(payload)
+        status = result.get("status")
+        result_list = result.get("result")
+        count = len(result_list) if isinstance(result_list, list) else 0
+        logger.info(
+            "pipeline-executions: payload[%s] response status=%s, result_count=%s; keys=%s",
+            i,
+            status,
+            count,
+            list(result.keys()) if isinstance(result, dict) else None,
+        )
+        if status != "success":
+            logger.warning(
+                "pipeline-executions: payload[%s] non-success: error=%s message=%s",
+                i,
+                result.get("error"),
+                result.get("message"),
+            )
         if result.get("status") == "success":
             for e in result.get("result") or []:
                 row = dict(e)
                 row.setdefault("enclave", row.get("enclave_name", ""))
+                row.setdefault("pipeline_id", row.get("pipeline_id", ""))
+                row["pipeline_id_display"] = _pipeline_id_display(row.get("pipeline_id"))
+                row.setdefault("started_at_full", row.get("started_at", ""))
+                row.setdefault("completed_at", row.get("stopped_at"))
                 row["status"] = _status_display(row.get("status", ""))
                 all_executions.append(row)
     active = [e for e in all_executions if (e.get("status") or "").lower() == "running"]
     recent = [e for e in all_executions if e.get("status") in ("Succeeded", "Failed")]
+    logger.info(
+        "pipeline-executions: merged all=%s active=%s recent=%s",
+        len(all_executions),
+        len(active),
+        len(recent),
+    )
     started_executions = request.session.get(SESSION_STARTED_EXECUTIONS_KEY, [])
     for s in started_executions:
         r = dict(s)
         r.setdefault("enclave", r.get("enclave", ""))
+        r.setdefault("pipeline_id", r.get("pipeline_id", ""))
+        r.setdefault("pipeline_id_display", _pipeline_id_display(r.get("pipeline_id")))
         r.setdefault("status", "Running")
         if (r.get("status") or "").lower() != "running":
             continue
@@ -233,11 +338,42 @@ def _executions_from_backend(request: HttpRequest) -> tuple[list[dict[str, Any]]
 
 
 @login_required
+def pipeline_executions_json(request: HttpRequest) -> HttpResponse:
+    """Return active and recent pipeline executions as JSON for polling."""
+    logger.info("pipeline-executions: GET /api/pipeline-executions/ request")
+    active_executions, recent_executions = _executions_from_backend(request)
+    poll_seconds = getattr(
+        settings, "LANDING_PIPELINE_POLL_INTERVAL_SECONDS", 60
+    )
+    logger.info(
+        "pipeline-executions: returning active=%s recent=%s",
+        len(active_executions),
+        len(recent_executions),
+    )
+    return JsonResponse(
+        {
+            "active_executions": active_executions,
+            "recent_executions": recent_executions,
+            "poll_interval_seconds": poll_seconds,
+        }
+    )
+
+
+@login_required
 def home(request: HttpRequest) -> HttpResponse:
     """Render the primary workflow-oriented landing page."""
     end_date = date.today()
     start_date = end_date - timedelta(days=7)
     active_executions, recent_executions = _executions_from_backend(request)
+    poll_seconds = getattr(
+        settings, "LANDING_PIPELINE_POLL_INTERVAL_SECONDS", 60
+    )
+    execution_detail_url_template = request.build_absolute_uri(
+        reverse(
+            "landing:pipeline-execution-detail",
+            kwargs={"execution_id": "EXECUTION_ID"},
+        )
+    )
     context = {
         "active_executions": active_executions,
         "recent_executions": recent_executions,
@@ -245,6 +381,8 @@ def home(request: HttpRequest) -> HttpResponse:
         "default_range_days": 7,
         "default_start_date": start_date.isoformat(),
         "default_end_date": end_date.isoformat(),
+        "poll_interval_seconds": poll_seconds,
+        "execution_detail_url_template": execution_detail_url_template,
     }
     return render(request, "landing/home.html", context)
 
@@ -311,7 +449,12 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
                 if not started_execution.get("label"):
                     started_execution["label"] = contract.label
                 started_execution["payload"] = payload
-                _save_execution_to_session(request, started_execution, form.cleaned_data["enclave_name"])
+                _save_execution_to_session(
+                    request,
+                    started_execution,
+                    form.cleaned_data["enclave_name"],
+                    pipeline_id=contract.id,
+                )
                 form = PipelineStartForm(
                     contract=contract,
                     enclaves=SAMPLE_ENCLAVES,
@@ -340,12 +483,14 @@ def _get_all_executions_from_backend() -> list[dict[str, Any]]:
     """Return merged list of executions from all pipelines (for lookup by execution_id)."""
     backend = get_backend()
     all_executions: list[dict[str, Any]] = []
-    for contract in list_pipeline_contracts():
-        result = backend.run_query({"query": "list-pipeline-executions", "pipeline_id": contract.id})
+    for payload in _list_pipeline_executions_payloads():
+        result = backend.run_query(payload)
         if result.get("status") == "success":
             for e in result.get("result") or []:
                 row = dict(e)
                 row.setdefault("enclave", row.get("enclave_name", ""))
+                row.setdefault("pipeline_id", row.get("pipeline_id", ""))
+                row["pipeline_id_display"] = _pipeline_id_display(row.get("pipeline_id"))
                 row.setdefault("started_at_full", row.get("started_at", ""))
                 row.setdefault("completed_at", row.get("stopped_at"))
                 row["status"] = _status_display(row.get("status", ""))
@@ -368,6 +513,8 @@ def _get_execution_by_id(request: HttpRequest, execution_id: str) -> dict[str, A
                 record["label"] = contract.label if contract else record["name"]
             if "started_at_full" not in record:
                 record["started_at_full"] = record.get("started_at", "")
+            record.setdefault("pipeline_id", record.get("pipeline_id", ""))
+            record.setdefault("pipeline_id_display", _pipeline_id_display(record.get("pipeline_id")))
             return record
     for item in _get_all_executions_from_backend():
         if item.get("execution_id") == execution_id:
@@ -494,10 +641,10 @@ def pipeline_execution_detail(request: HttpRequest, execution_id: str) -> HttpRe
             "execution_arn": execution.get("execution_arn"),
             "name": execution.get("name"),
             "label": execution.get("label"),
+            "pipeline_id": execution.get("pipeline_id"),
             "status": execution.get("status"),
             "started_at": started_at_full,
             "stopped_at": stopped_at,
-            "enclave_name": execution.get("enclave"),
             "steps": steps,
             "current_step_index": current_step_index,
             "failure_step_index": failure_step_index,

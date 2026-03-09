@@ -24,7 +24,7 @@ Example: if `operation_defaults` has `destination_region: "us-east-1"` and `crea
 ### Example config snippet
 
 ```yaml
-source_account_id: "982081051641"
+source_account_id: "111111111111"
 copy_image_source_region: "us-east-1"
 
 operation_defaults:

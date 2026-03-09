@@ -9,11 +9,11 @@ The root route (`/`) provides a workflow-oriented landing page for operations en
 - **Set up a new enclave** with the `provision-ad-connector` workflow.
 - **Provision enclave resources** such as Linux/Windows WorkSpaces and EC2 instances.
 - **Deploy software changes** using Ansible playbooks and PowerShell scripts.
-- **Monitor pipeline activity** using tabs for currently executing and historical runs, with relative and absolute date filters.
+- **Monitor pipeline activity** using tabs for currently executing and historical runs, with relative and absolute date filters. The list-pipeline-executions query is driven by `landing/events/list-pipeline-executions.json` (pipeline IDs, optional status_filter and max_results). The tables refresh on page load and then periodically (every `LANDING_PIPELINE_POLL_INTERVAL_SECONDS` seconds, default 60; set to 0 in settings to disable polling).
 - **Start pipelines directly** from workflow cards and open a contract-driven start screen for each pipeline.
 - **Open execution details** by clicking a pipeline label in the "Currently executing" or "Execution history" table; each label links to the pipeline execution detail screen.
 
-The page currently shows sample pipeline data and UI controls that are ready to be wired to backend APIs.
+The page shows pipeline data from the backend (mock or real). When the real backend is configured, the pipeline activity tables stay up to date via the configurable poll interval.
 
 ## Quick operations
 
