@@ -162,6 +162,8 @@ MOCK_ENDPOINTS = [
         "is_managed": True,
         "node_id": "mi-0f1e2d3c4b5a1111",
         "ssm_status": "Online",
+        "last_patched_at": "2025-07-21 14:32 UTC",
+        "patch_managed": True,
         "destination_account_id": "111111111111",
     },
     {
@@ -172,6 +174,8 @@ MOCK_ENDPOINTS = [
         "is_managed": True,
         "node_id": "mi-1234abcd56781111",
         "ssm_status": "Online",
+        "last_patched_at": None,
+        "patch_managed": True,
         "destination_account_id": "111111111111",
     },
     {
@@ -182,7 +186,75 @@ MOCK_ENDPOINTS = [
         "is_managed": False,
         "node_id": None,
         "ssm_status": "Not registered",
+        "last_patched_at": None,
+        "patch_managed": False,
         "destination_account_id": "111111111111",
+    },
+]
+
+MOCK_VULNERABILITIES = [
+    {
+        "assessed_criticality": "Critical",
+        "status": "Open",
+        "days_open": 21,
+        "days_actionable": 10,
+        "account_id": "111111111111",
+        "finding_type": "Package Vulnerability",
+        "package_name": "openssl",
+        "installed_version": "3.0.7",
+        "fixed_version": "3.0.15",
+        "vulnerability_id": "CVE-2025-0001",
+        "vulnerability_source": "Inspector",
+        "vulnerability_reported_at": "2025-07-01T08:10:00Z",
+        "fix_available": True,
+        "exploit_available": True,
+        "resource_type": "ec2",
+        "resource_id": "i-0a1b2c3d4e5f1111",
+        "tag_name": "analytics",
+        "comments": "Prioritize next patch window.",
+        "category": "actionable",
+    },
+    {
+        "assessed_criticality": "High",
+        "status": "Open",
+        "days_open": 8,
+        "days_actionable": 4,
+        "account_id": "111111111111",
+        "finding_type": "Package Vulnerability",
+        "package_name": "curl",
+        "installed_version": "8.3.0",
+        "fixed_version": "8.6.0",
+        "vulnerability_id": "CVE-2025-0199",
+        "vulnerability_source": "Inspector",
+        "vulnerability_reported_at": "2025-07-13T10:45:00Z",
+        "fix_available": True,
+        "exploit_available": False,
+        "resource_type": "workspace",
+        "resource_id": "ws-012345671111",
+        "tag_name": "workspace",
+        "comments": "Track with monthly client update.",
+        "category": "planned",
+    },
+    {
+        "assessed_criticality": "Low",
+        "status": "Suppressed",
+        "days_open": 42,
+        "days_actionable": 0,
+        "account_id": "111111111111",
+        "finding_type": "Configuration",
+        "package_name": "n/a",
+        "installed_version": "n/a",
+        "fixed_version": "n/a",
+        "vulnerability_id": "CFG-2025-0022",
+        "vulnerability_source": "Inspector",
+        "vulnerability_reported_at": "2025-06-10T15:00:00Z",
+        "fix_available": False,
+        "exploit_available": False,
+        "resource_type": "ec2",
+        "resource_id": "i-09f8e7d6c5b41111",
+        "tag_name": "batch",
+        "comments": "Informational baseline observation.",
+        "category": "informational",
     },
 ]
 
@@ -279,6 +351,52 @@ class MockBackend(Backend):
         }
 
     def run_query(self, payload: dict[str, Any]) -> dict[str, Any]:
+        def _normalize_bool(value: Any) -> bool:
+            if isinstance(value, bool):
+                return value
+            return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+        def _matches_filter(item: dict[str, Any], key: str, criterion: Any) -> bool:
+            if isinstance(criterion, str):
+                return criterion.strip().lower() in str(item.get(key) or "").lower()
+            if not isinstance(criterion, dict):
+                return True
+
+            criterion_type = str(criterion.get("type") or "").strip().lower()
+            if criterion_type == "number":
+                raw_value = item.get(key)
+                try:
+                    numeric_value = float(raw_value)
+                except (TypeError, ValueError):
+                    return False
+                min_raw = criterion.get("min")
+                max_raw = criterion.get("max")
+                try:
+                    min_value = float(min_raw) if str(min_raw).strip() != "" else None
+                except (TypeError, ValueError):
+                    min_value = None
+                try:
+                    max_value = float(max_raw) if str(max_raw).strip() != "" else None
+                except (TypeError, ValueError):
+                    max_value = None
+                if min_value is not None and numeric_value < min_value:
+                    return False
+                if max_value is not None and numeric_value > max_value:
+                    return False
+                return True
+
+            if criterion_type == "boolean":
+                target = str(criterion.get("value") or "any").strip().lower()
+                if target == "any":
+                    return True
+                actual = "yes" if _normalize_bool(item.get(key)) else "no"
+                return actual == target
+
+            text = str(criterion.get("value") or "").strip().lower()
+            if not text:
+                return True
+            return text in str(item.get(key) or "").lower()
+
         query = payload.get("query")
         if not query:
             return {"status": "error", "error": "ValidationError", "message": "query is required."}
@@ -397,6 +515,29 @@ class MockBackend(Backend):
                     and (destination_region is None or item.get("region") == destination_region)
                 )
             ]
+            return {"status": "success", "result": result}
+
+        if query == "list-vulnerabilities":
+            destination_account_id = str(payload.get("destination_account_id") or "").strip()
+            destination_region = str(payload.get("destination_region") or "").strip()
+            category = str(payload.get("category") or "").strip().lower()
+            resource_id = str(payload.get("resource_id") or "").strip()
+            raw_filters = payload.get("filters")
+            filters = raw_filters if isinstance(raw_filters, dict) else {}
+
+            result = []
+            for item in MOCK_VULNERABILITIES:
+                if destination_account_id and str(item.get("account_id") or "") != destination_account_id:
+                    continue
+                if destination_region and destination_region != "us-east-1":
+                    continue
+                if category and str(item.get("category") or "").lower() != category:
+                    continue
+                if resource_id and str(item.get("resource_id") or "") != resource_id:
+                    continue
+                if any(not _matches_filter(item, key, criterion) for key, criterion in filters.items()):
+                    continue
+                result.append(item)
             return {"status": "success", "result": result}
 
         return {"status": "error", "error": "UnknownQuery", "message": f"Unknown query: {query}"}

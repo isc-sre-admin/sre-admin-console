@@ -7,7 +7,9 @@ description: |
   Queries the backend for normalized vulnerability data associated with an enclave
   account. The response is designed for the vulnerabilities panel on the enclave
   detail screen so operators can review Actionable, Planned, and Informational
-  findings with flexible filtering.
+  findings with flexible filtering. The backend maps raw AWS Security Hub CSPM
+  findings (Inspector source) into this schema and assigns each record to one
+  category: actionable, planned, or informational.
 
 invocation:
   target: SreQueryFunction
@@ -21,7 +23,7 @@ invocation:
     optional:
       destination_region: string
       resource_id: string
-      category: string
+      category: string  # actionable | planned | informational
       filters: object
   example_python: |
     client = boto3.client("lambda")

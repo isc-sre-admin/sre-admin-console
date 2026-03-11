@@ -335,49 +335,18 @@ body.app-shell {
   outline-offset: 2px;
 }
 
-@media (max-width: 991.98px) {
-  .app-shell-layout {
-    display: block;
-  }
-
-  .app-shell-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--sre-border);
-    width: 100%;
-    max-height: 45vh;
-  }
-
-  .context-layout {
-    display: block;
-    min-height: 0;
-  }
-
-  .context-main {
-    padding-right: 0;
-  }
-
-  .context-pane-toggle {
-    writing-mode: horizontal-tb;
-    transform: none;
-    border-radius: 0.5rem;
-    border-right: 1px solid var(--sre-border);
-    margin: 0.5rem 0;
-    min-width: auto;
-    padding: 0.45rem 0.65rem;
-  }
-
-  .context-pane > * {
-    min-width: 0;
-  }
-
-  .context-pane,
-  .context-layout.context-pane-open .context-pane {
-    width: 100%;
-  }
+.endpoint-row {
+  cursor: pointer;
 }
 
-@media (min-width: 992px) {
-  .app-shell-sidebar {
-    display: block;
-  }
+.vuln-table-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.vuln-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--sre-card);
 }
