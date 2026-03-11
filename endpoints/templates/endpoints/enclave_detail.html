@@ -1,4 +1,5 @@
 {% extends "landing/base.html" %}
+{% load static %}
 
 {% block title %}{{ enclave.enclave_name }} endpoints | SRE Operations Console{% endblock title %}
 
@@ -14,6 +15,7 @@
   <section class="mb-4">
     <p class="section-eyebrow mb-1">Enclave</p>
     <h2 class="mb-1">{{ enclave.enclave_name }}</h2>
+    <p class="text-secondary mb-2">Manage endpoint inventory and vulnerability context for this enclave.</p>
     <p class="text-secondary mb-2">
       {{ enclave.research_group }} · {{ enclave.destination_account_id }} · Region {{ region }}
     </p>
@@ -24,9 +26,9 @@
     <div class="alert alert-info" role="status">{{ backend_note }}</div>
   {% endif %}
 
-  <div class="row g-4">
-    <div class="col-12 col-lg-5">
-      <section class="card border-0 shadow-sm">
+  <div class="context-layout">
+    <div class="context-main">
+      <section class="card border-0 shadow-sm h-100">
         <div class="card-body p-0">
           {% if endpoints %}
             <div class="table-responsive">
@@ -51,9 +53,7 @@
                     >
                       <td>{{ endpoint.resource_type|upper }}</td>
                       <td>
-                        <a
-                          href="{% url 'endpoints:endpoint-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}"
-                        >
+                        <a href="{% url 'endpoints:endpoint-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}">
                           {{ endpoint.resource_id }}
                         </a>
                       </td>
@@ -68,9 +68,7 @@
                       </td>
                       <td>{{ endpoint.ssm_status }}</td>
                       <td class="text-nowrap">
-                        <a
-                          href="{% url 'endpoints:patch-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}"
-                        >
+                        <a href="{% url 'endpoints:patch-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}">
                           {% if endpoint.patch_managed %}
                             {% if endpoint.last_patched_at %}
                               {{ endpoint.last_patched_at }}
@@ -95,458 +93,25 @@
         </div>
       </section>
     </div>
-    <div class="col-12 col-lg-7">
+
+    <button
+      type="button"
+      class="context-pane-toggle"
+      data-context-pane-toggle
+      data-storage-key="sreConsole.vulnPaneOpen.enclave"
+      aria-controls="enclave-vulnerability-pane"
+      aria-expanded="false"
+      aria-label="Toggle Vulnerability Management pane"
+    >
+      Vulnerability Management
+    </button>
+
+    <aside class="context-pane" id="enclave-vulnerability-pane" hidden aria-hidden="true">
       {% include "endpoints/_vulnerabilities_panel.html" with enclave=enclave region=region %}
-    </div>
+    </aside>
   </div>
 {% endblock content %}
 
 {% block extra_js %}
-  <script>
-    (function () {
-      var tableContainer = document.getElementById('vuln-table-container');
-      if (!tableContainer) {
-        return;
-      }
-
-      var headerRow = document.getElementById('vuln-table-header-row');
-      var body = document.getElementById('vuln-table-body');
-      var filtersSummary = document.getElementById('vuln-active-filters-summary');
-      var filterForm = document.getElementById('vuln-filter-form');
-      var filterFields = document.getElementById('vuln-filter-fields');
-      var filterClearBtn = document.getElementById('vuln-filter-clear');
-      var settingsForm = document.getElementById('vuln-settings-form');
-      var settingsFields = document.getElementById('vuln-settings-fields');
-      var settingsRestoreBtn = document.getElementById('vuln-settings-restore');
-      var tabButtons = document.querySelectorAll('#vuln-tablist [data-vuln-tab]');
-      var endpointRows = document.querySelectorAll('.endpoint-row');
-      var dataUrlBase = tableContainer.getAttribute('data-vuln-url');
-
-      var STORAGE_KEY_COLUMNS = 'sreConsole.vulnerabilityColumns';
-      var STORAGE_KEY_FILTERS = 'sreConsole.vulnerabilityFilters';
-
-      var ALL_COLUMNS = [
-        { key: 'assessed_criticality', label: 'Assessed Criticality' },
-        { key: 'status', label: 'Status' },
-        { key: 'days_open', label: 'Days Open' },
-        { key: 'days_actionable', label: 'Days Actionable' },
-        { key: 'account_id', label: 'Account ID' },
-        { key: 'finding_type', label: 'Type' },
-        { key: 'package_name', label: 'Package Name' },
-        { key: 'installed_version', label: 'Installed Version' },
-        { key: 'fixed_version', label: 'Fixed Version' },
-        { key: 'vulnerability_id', label: 'Vulnerability ID' },
-        { key: 'vulnerability_source', label: 'Vulnerability Source' },
-        { key: 'vulnerability_reported_at', label: 'Vulnerability Reported' },
-        { key: 'fix_available', label: 'Fix Available' },
-        { key: 'exploit_available', label: 'Exploit Available' },
-        { key: 'resource_type', label: 'Resource Type' },
-        { key: 'resource_id', label: 'Resource ID' },
-        { key: 'tag_name', label: 'Tag Name' },
-        { key: 'comments', label: 'Comments' }
-      ];
-
-      var DEFAULT_VISIBLE = {
-        assessed_criticality: true,
-        status: true,
-        package_name: true,
-        vulnerability_id: true
-      };
-
-      function loadColumnVisibility() {
-        try {
-          var raw = window.localStorage.getItem(STORAGE_KEY_COLUMNS);
-          if (!raw) return {};
-          var parsed = JSON.parse(raw);
-          return parsed && typeof parsed === 'object' ? parsed : {};
-        } catch (e) {
-          return {};
-        }
-      }
-
-      function saveColumnVisibility(state) {
-        try {
-          window.localStorage.setItem(STORAGE_KEY_COLUMNS, JSON.stringify(state));
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      function loadFilterState() {
-        var initial = {
-          tab: 'actionable',
-          resource_id: null,
-          columns: {}
-        };
-        try {
-          var raw = window.localStorage.getItem(STORAGE_KEY_FILTERS);
-          if (!raw) return initial;
-          var parsed = JSON.parse(raw);
-          if (!parsed || typeof parsed !== 'object') return initial;
-          if (!parsed.columns || typeof parsed.columns !== 'object') {
-            parsed.columns = {};
-          }
-          if (!parsed.tab) {
-            parsed.tab = 'actionable';
-          }
-          return parsed;
-        } catch (e) {
-          return initial;
-        }
-      }
-
-      function saveFilterState() {
-        try {
-          window.localStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(filterState));
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      var columnVisibility = loadColumnVisibility();
-      var filterState = loadFilterState();
-      var currentTab = filterState.tab || 'actionable';
-      var tabScrollPositions = {
-        actionable: 0,
-        planned: 0,
-        informational: 0
-      };
-      var currentData = [];
-      var selectedEndpointRow = null;
-
-      function isColumnVisible(key) {
-        if (Object.prototype.hasOwnProperty.call(columnVisibility, key)) {
-          return !!columnVisibility[key];
-        }
-        if (Object.prototype.hasOwnProperty.call(DEFAULT_VISIBLE, key)) {
-          return !!DEFAULT_VISIBLE[key];
-        }
-        return false;
-      }
-
-      function buildHeader() {
-        if (!headerRow) return;
-        headerRow.innerHTML = '';
-        ALL_COLUMNS.forEach(function (col) {
-          if (!isColumnVisible(col.key)) return;
-          var th = document.createElement('th');
-          th.scope = 'col';
-          th.textContent = col.label;
-          headerRow.appendChild(th);
-        });
-      }
-
-      function formatValue(key, value) {
-        if (value == null) {
-          return '';
-        }
-        if (key === 'fix_available' || key === 'exploit_available') {
-          var truthy = String(value).trim().toLowerCase();
-          if (!truthy) return '';
-          return truthy === 'true' || truthy === 'yes' || truthy === '1' ? 'Yes' : 'No';
-        }
-        return String(value);
-      }
-
-      function matchesFilters(item) {
-        if (filterState.resource_id) {
-          if (String(item.resource_id || '') !== String(filterState.resource_id)) {
-            return false;
-          }
-        }
-        var columnFilters = filterState.columns || {};
-        for (var key in columnFilters) {
-          if (!Object.prototype.hasOwnProperty.call(columnFilters, key)) continue;
-          var term = String(columnFilters[key] || '').trim().toLowerCase();
-          if (!term) continue;
-          var rawValue = item[key];
-          var text = String(rawValue == null ? '' : rawValue).toLowerCase();
-          if (text.indexOf(term) === -1) {
-            return false;
-          }
-        }
-        return true;
-      }
-
-      function renderTable() {
-        if (!body) return;
-        body.innerHTML = '';
-        buildHeader();
-        currentData.forEach(function (item) {
-          if (!matchesFilters(item)) return;
-          var tr = document.createElement('tr');
-          ALL_COLUMNS.forEach(function (col) {
-            if (!isColumnVisible(col.key)) return;
-            var td = document.createElement('td');
-            td.textContent = formatValue(col.key, item[col.key]);
-            tr.appendChild(td);
-          });
-          body.appendChild(tr);
-        });
-      }
-
-      function buildDataUrl() {
-        var url = dataUrlBase || '';
-        var params = [];
-        if (currentTab) {
-          params.push('category=' + encodeURIComponent(currentTab));
-        }
-        if (filterState.resource_id) {
-          params.push('resource_id=' + encodeURIComponent(filterState.resource_id));
-        }
-        if (filterState.columns && Object.keys(filterState.columns).length > 0) {
-          try {
-            params.push('filters=' + encodeURIComponent(JSON.stringify(filterState.columns)));
-          } catch (e) {
-            // ignore
-          }
-        }
-        if (params.length) {
-          url += (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
-        }
-        return url;
-      }
-
-      function syncFiltersSummary() {
-        if (!filtersSummary) return;
-        var parts = [];
-        if (filterState.resource_id) {
-          parts.push('Filtered by endpoint ' + filterState.resource_id);
-        }
-        if (filterState.columns && Object.keys(filterState.columns).length > 0) {
-          parts.push('Column filters applied');
-        }
-        if (!parts.length) {
-          filtersSummary.textContent = 'Showing all vulnerabilities.';
-        } else {
-          filtersSummary.textContent = parts.join(' · ');
-        }
-      }
-
-      function fetchAndRender() {
-        var url = buildDataUrl();
-        if (!url) {
-          currentData = [];
-          renderTable();
-          syncFiltersSummary();
-          return;
-        }
-        fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
-          .then(function (res) {
-            return res.json().then(function (data) {
-              return { ok: res.ok, data: data };
-            });
-          })
-          .then(function (result) {
-            if (!result.ok) {
-              currentData = [];
-            } else {
-              currentData = Array.isArray(result.data.vulnerabilities) ? result.data.vulnerabilities : [];
-            }
-            renderTable();
-            syncFiltersSummary();
-            var scrollTop = tabScrollPositions[currentTab] || 0;
-            tableContainer.scrollTop = scrollTop;
-          })
-          .catch(function () {
-            currentData = [];
-            renderTable();
-            syncFiltersSummary();
-          });
-      }
-
-      function initSettingsModal() {
-        if (!settingsFields || !settingsForm) return;
-        settingsFields.innerHTML = '';
-        ALL_COLUMNS.forEach(function (col) {
-          var wrapper = document.createElement('div');
-          wrapper.className = 'col';
-          var div = document.createElement('div');
-          div.className = 'form-check';
-          var input = document.createElement('input');
-          input.className = 'form-check-input';
-          input.type = 'checkbox';
-          input.id = 'vuln-col-' + col.key;
-          input.name = 'column-' + col.key;
-          input.checked = isColumnVisible(col.key);
-          var label = document.createElement('label');
-          label.className = 'form-check-label';
-          label.htmlFor = input.id;
-          label.textContent = col.label;
-          div.appendChild(input);
-          div.appendChild(label);
-          wrapper.appendChild(div);
-          settingsFields.appendChild(wrapper);
-        });
-
-        settingsForm.addEventListener('submit', function (ev) {
-          ev.preventDefault();
-          var newVisibility = {};
-          var anyChecked = false;
-          ALL_COLUMNS.forEach(function (col) {
-            var checkbox = settingsForm.querySelector('input[name="column-' + col.key + '"]');
-            if (!checkbox) return;
-            var checked = !!checkbox.checked;
-            newVisibility[col.key] = checked;
-            if (checked) anyChecked = true;
-          });
-          if (!anyChecked) {
-            // Require at least one column
-            return;
-          }
-          columnVisibility = newVisibility;
-          saveColumnVisibility(columnVisibility);
-          renderTable();
-          if (window.bootstrap && window.bootstrap.Modal) {
-            var modalEl = document.getElementById('vuln-settings-modal');
-            var modal = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
-            modal.hide();
-          }
-        });
-
-        if (settingsRestoreBtn) {
-          settingsRestoreBtn.addEventListener('click', function () {
-            columnVisibility = {};
-            saveColumnVisibility(columnVisibility);
-            // Reset checkboxes to defaults
-            ALL_COLUMNS.forEach(function (col) {
-              var checkbox = settingsForm.querySelector('input[name="column-' + col.key + '"]');
-              if (!checkbox) return;
-              checkbox.checked = isColumnVisible(col.key);
-            });
-            renderTable();
-          });
-        }
-      }
-
-      function initFilterModal() {
-        if (!filterFields || !filterForm) return;
-        filterFields.innerHTML = '';
-        ALL_COLUMNS.forEach(function (col) {
-          var wrapper = document.createElement('div');
-          wrapper.className = 'col-12 col-md-6';
-          var label = document.createElement('label');
-          label.className = 'form-label';
-          label.htmlFor = 'vuln-filter-' + col.key;
-          label.textContent = col.label;
-          var input = document.createElement('input');
-          input.type = 'text';
-          input.className = 'form-control';
-          input.id = 'vuln-filter-' + col.key;
-          input.name = 'filter-' + col.key;
-          var current = filterState.columns && filterState.columns[col.key];
-          if (current) {
-            input.value = current;
-          }
-          wrapper.appendChild(label);
-          wrapper.appendChild(input);
-          filterFields.appendChild(wrapper);
-        });
-
-        filterForm.addEventListener('submit', function (ev) {
-          ev.preventDefault();
-          var newColumns = {};
-          ALL_COLUMNS.forEach(function (col) {
-            var input = filterForm.querySelector('input[name="filter-' + col.key + '"]');
-            if (!input) return;
-            var value = String(input.value || '').trim();
-            if (value) {
-              newColumns[col.key] = value;
-            }
-          });
-          filterState.columns = newColumns;
-          saveFilterState();
-          fetchAndRender();
-          if (window.bootstrap && window.bootstrap.Modal) {
-            var modalEl = document.getElementById('vuln-filter-modal');
-            var modal = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
-            modal.hide();
-          }
-        });
-
-        if (filterClearBtn) {
-          filterClearBtn.addEventListener('click', function () {
-            filterState.columns = {};
-            filterState.resource_id = null;
-            saveFilterState();
-            // Clear inputs
-            var inputs = filterForm.querySelectorAll('input[name^="filter-"]');
-            inputs.forEach(function (input) {
-              input.value = '';
-            });
-            clearEndpointSelection();
-            fetchAndRender();
-          });
-        }
-      }
-
-      function clearEndpointSelection() {
-        endpointRows.forEach(function (row) {
-          row.classList.remove('table-active');
-        });
-        selectedEndpointRow = null;
-      }
-
-      function restoreEndpointSelectionFromState() {
-        if (!filterState.resource_id) return;
-        endpointRows.forEach(function (row) {
-          var id = row.getAttribute('data-endpoint-resource-id');
-          if (String(id) === String(filterState.resource_id)) {
-            row.classList.add('table-active');
-            selectedEndpointRow = row;
-          } else {
-            row.classList.remove('table-active');
-          }
-        });
-      }
-
-      endpointRows.forEach(function (row) {
-        row.addEventListener('click', function (ev) {
-          if (ev.target.closest('a,button')) {
-            return;
-          }
-          var id = row.getAttribute('data-endpoint-resource-id');
-          if (!id) return;
-          if (selectedEndpointRow === row) {
-            row.classList.remove('table-active');
-            selectedEndpointRow = null;
-            filterState.resource_id = null;
-          } else {
-            clearEndpointSelection();
-            row.classList.add('table-active');
-            selectedEndpointRow = row;
-            filterState.resource_id = id;
-          }
-          saveFilterState();
-          fetchAndRender();
-        });
-      });
-
-      tabButtons.forEach(function (btn) {
-        var tab = btn.getAttribute('data-vuln-tab');
-        if (tab === currentTab) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-        btn.addEventListener('click', function () {
-          if (tab === currentTab) return;
-          tabScrollPositions[currentTab] = tableContainer.scrollTop;
-          currentTab = tab;
-          filterState.tab = currentTab;
-          tabButtons.forEach(function (other) {
-            other.classList.toggle('active', other === btn);
-          });
-          saveFilterState();
-          fetchAndRender();
-        });
-      });
-
-      initSettingsModal();
-      initFilterModal();
-      restoreEndpointSelectionFromState();
-      syncFiltersSummary();
-      fetchAndRender();
-    })();
-  </script>
+  <script src="{% static 'endpoints/js/vulnerability_panel.js' %}"></script>
 {% endblock extra_js %}

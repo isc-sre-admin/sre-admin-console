@@ -1,0 +1,149 @@
+{% extends "landing/base.html" %}
+{% load landing_extras %}
+
+{% block title %}POAM entry | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'poam:list' %}">Plan of Actions and Milestones</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{% if is_edit %}Edit{% else %}Add{% endif %} POAM entry</li>
+    </ol>
+  </nav>
+
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">POAM</p>
+    <h2 class="mb-2">{% if is_edit %}Edit{% else %}Add{% endif %} POAM entry</h2>
+    <p class="text-secondary mb-0">Submit `create-poam-entry` requests using the backend contract payload.</p>
+  </section>
+
+  {% if errors %}
+    <div class="alert alert-danger" role="alert">
+      <ul class="mb-0">
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if backend_result and backend_result.status != "error" %}
+    <div class="alert alert-success" role="status">
+      {{ backend_result.message|default:"POAM request accepted." }}
+    </div>
+  {% endif %}
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="row g-3 mb-4">
+          <div class="col-12"><h3 class="h6 mb-0">Identification</h3></div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="id-mode">Mode</label>
+            <select class="form-select" id="id-mode" name="mode" required>
+              {% for mode in mode_choices %}
+                <option value="{{ mode }}" {% if form_data|get_item:"mode" == mode or not form_data|get_item:"mode" and mode == "modify" %}selected{% endif %}>
+                  {{ mode }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="id-poam-id">POAM ID</label>
+            <input class="form-control" id="id-poam-id" name="poam_id" value="{{ form_data|get_item:'poam_id' }}" required />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="id-status">Status</label>
+            <select class="form-select" id="id-status" name="status" required>
+              {% for status in status_choices %}
+                <option value="{{ status }}" {% if form_data|get_item:"status" == status or not form_data|get_item:"status" and status == "open" %}selected{% endif %}>
+                  {{ status }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="id-owner">Owner</label>
+            <input class="form-control" id="id-owner" name="owner" value="{{ form_data|get_item:'owner' }}" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="id-source">Source</label>
+            <input class="form-control" id="id-source" name="source" value="{{ form_data|get_item:'source' }}" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="id-sequence-number">Sequence number</label>
+            <input class="form-control" id="id-sequence-number" name="sequence_number" value="{{ form_data|get_item:'sequence_number' }}" />
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-12"><h3 class="h6 mb-0">Context</h3></div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label" for="id-enclave-ids">Enclave IDs</label>
+            <textarea class="form-control" id="id-enclave-ids" name="enclave_ids" rows="2">{{ form_data|get_item:'enclave_ids' }}</textarea>
+            <div class="form-text">Comma- or newline-separated values.</div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label" for="id-enclave-names">Enclave names</label>
+            <textarea class="form-control" id="id-enclave-names" name="enclave_names" rows="2">{{ form_data|get_item:'enclave_names' }}</textarea>
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label" for="id-vulnerability-ids">Vulnerability IDs</label>
+            <textarea class="form-control" id="id-vulnerability-ids" name="vulnerability_ids" rows="2">{{ form_data|get_item:'vulnerability_ids' }}</textarea>
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label" for="id-resource-ids">Resource IDs</label>
+            <textarea class="form-control" id="id-resource-ids" name="resource_ids" rows="2">{{ form_data|get_item:'resource_ids' }}</textarea>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-12"><h3 class="h6 mb-0">Timeline</h3></div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="id-create-date">Create date</label>
+            <input class="form-control" id="id-create-date" name="create_date" value="{{ form_data|get_item:'create_date' }}" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="id-due-date">Due date</label>
+            <input class="form-control" id="id-due-date" name="due_date" value="{{ form_data|get_item:'due_date' }}" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="id-completion-date">Completion date</label>
+            <input class="form-control" id="id-completion-date" name="completion_date" value="{{ form_data|get_item:'completion_date' }}" />
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-12"><h3 class="h6 mb-0">Details</h3></div>
+          <div class="col-12">
+            <label class="form-label" for="id-observation">Observation</label>
+            <textarea class="form-control" id="id-observation" name="observation" rows="3">{{ form_data|get_item:'observation' }}</textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="id-plan">Plan</label>
+            <textarea class="form-control" id="id-plan" name="plan" rows="3">{{ form_data|get_item:'plan' }}</textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="id-comments">Comments</label>
+            <textarea class="form-control" id="id-comments" name="comments" rows="3">{{ form_data|get_item:'comments' }}</textarea>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Submit POAM entry</button>
+          <a href="{% url 'poam:list' %}" class="btn btn-outline-secondary">Back to POAMs</a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% if submitted_payload %}
+    <section class="card border-0 shadow-sm mt-4">
+      <div class="card-body">
+        <h3 class="h6">Submitted payload</h3>
+        <pre class="small mb-0">{{ submitted_payload }}</pre>
+      </div>
+    </section>
+  {% endif %}
+{% endblock content %}

@@ -1,0 +1,149 @@
+{% extends "landing/base.html" %}
+{% load landing_extras %}
+
+{% block title %}{{ contract.label }} | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'landing:home' %}">Home</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ contract.label }}</li>
+    </ol>
+  </nav>
+
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">Operation</p>
+    <h2 class="mb-2">{{ contract.label }}</h2>
+    <p class="text-secondary mb-0">{{ contract.function }}</p>
+  </section>
+
+  {% if form_errors %}
+    <div class="alert alert-danger" role="alert">
+      <p class="mb-2">Please resolve the following errors:</p>
+      <ul class="mb-0">
+        {% for error in form_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if result_payload %}
+    {% if result_payload.status == "error" %}
+      <div class="alert alert-danger" role="alert">
+        <strong>{{ result_payload.error|default:"Operation error" }}:</strong>
+        {{ result_payload.message|default:"Request failed." }}
+      </div>
+    {% else %}
+      <div class="alert alert-success" role="status">
+        {{ result_payload.message|default:"Operation request accepted." }}
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="row g-3">
+          {% for field in contract.required_fields %}
+            <div class="col-12 {% if field.value_type == 'object' or field.value_type == 'array' %}col-lg-12{% else %}col-lg-6{% endif %}">
+              <label class="form-label" for="id-{{ field.key }}">
+                {{ field.key|title|cut:"_" }}
+              </label>
+              {% if field.value_type == "enum" %}
+                <select
+                  class="form-select"
+                  id="id-{{ field.key }}"
+                  name="{{ field.key }}"
+                  {% if field.key == "mode" and not form_data|get_item:"mode" and mode_initial %}data-default-mode="{{ mode_initial }}"{% endif %}
+                  required
+                >
+                  {% for choice in field.enum_choices %}
+                    <option
+                      value="{{ choice }}"
+                      {% if form_data|get_item:field.key == choice or field.key == "mode" and not form_data|get_item:"mode" and choice == mode_initial %}selected{% endif %}
+                    >
+                      {{ choice }}
+                    </option>
+                  {% endfor %}
+                </select>
+              {% elif field.value_type == "object" or field.value_type == "array" %}
+                <textarea
+                  class="form-control"
+                  id="id-{{ field.key }}"
+                  name="{{ field.key }}"
+                  rows="3"
+                  required
+                >{{ form_data|get_item:field.key }}</textarea>
+              {% elif field.value_type == "boolean" %}
+                <select class="form-select" id="id-{{ field.key }}" name="{{ field.key }}" required>
+                  <option value="true" {% if form_data|get_item:field.key == "true" %}selected{% endif %}>true</option>
+                  <option value="false" {% if form_data|get_item:field.key == "false" %}selected{% endif %}>false</option>
+                </select>
+              {% else %}
+                <input
+                  class="form-control"
+                  id="id-{{ field.key }}"
+                  name="{{ field.key }}"
+                  value="{{ form_data|get_item:field.key }}"
+                  required
+                />
+              {% endif %}
+              <div class="form-text">{{ field.description }}</div>
+            </div>
+          {% endfor %}
+        </div>
+
+        {% if contract.optional_fields %}
+          <hr class="my-4" />
+          <h3 class="h6 mb-3">Optional inputs</h3>
+          <div class="row g-3">
+            {% for field in contract.optional_fields %}
+              <div class="col-12 {% if field.value_type == 'object' or field.value_type == 'array' %}col-lg-12{% else %}col-lg-6{% endif %}">
+                <label class="form-label" for="id-{{ field.key }}">{{ field.key|title|cut:"_" }}</label>
+                {% if field.value_type == "enum" %}
+                  <select class="form-select" id="id-{{ field.key }}" name="{{ field.key }}">
+                    <option value=""></option>
+                    {% for choice in field.enum_choices %}
+                      <option value="{{ choice }}" {% if form_data|get_item:field.key == choice %}selected{% endif %}>{{ choice }}</option>
+                    {% endfor %}
+                  </select>
+                {% elif field.value_type == "object" or field.value_type == "array" %}
+                  <textarea
+                    class="form-control"
+                    id="id-{{ field.key }}"
+                    name="{{ field.key }}"
+                    rows="3"
+                  >{{ form_data|get_item:field.key }}</textarea>
+                {% elif field.value_type == "boolean" %}
+                  <select class="form-select" id="id-{{ field.key }}" name="{{ field.key }}">
+                    <option value=""></option>
+                    <option value="true" {% if form_data|get_item:field.key == "true" %}selected{% endif %}>true</option>
+                    <option value="false" {% if form_data|get_item:field.key == "false" %}selected{% endif %}>false</option>
+                  </select>
+                {% else %}
+                  <input class="form-control" id="id-{{ field.key }}" name="{{ field.key }}" value="{{ form_data|get_item:field.key }}" />
+                {% endif %}
+                <div class="form-text">{{ field.description }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Run operation</button>
+          <a href="{% url 'landing:home' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% if submitted_payload %}
+    <section class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h3 class="h6">Submitted payload</h3>
+        <pre class="small mb-0">{{ submitted_payload }}</pre>
+      </div>
+    </section>
+  {% endif %}
+{% endblock content %}

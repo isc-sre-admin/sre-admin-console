@@ -2,8 +2,8 @@ from django.urls import path
 
 from endpoints.views import (
     enclave_detail,
-    endpoint_detail,
     enclave_vulnerabilities,
+    endpoint_detail,
     endpoints_index,
     execute_endpoint_operation,
     patch_detail,

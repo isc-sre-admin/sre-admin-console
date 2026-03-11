@@ -12,6 +12,117 @@ body.app-shell {
   color: var(--sre-text);
 }
 
+.app-shell-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-shell-sidebar {
+  background: #ffffff;
+  border-right: 1px solid var(--sre-border);
+  width: 272px;
+  flex-shrink: 0;
+  display: none;
+  overflow-y: auto;
+}
+
+.app-shell-sidebar.is-open {
+  display: block;
+}
+
+.app-sidebar-nav {
+  padding: 1rem 0.75rem 1.5rem;
+}
+
+.app-sidebar-title {
+  color: var(--sre-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.app-sidebar-link,
+.app-sidebar-sublink,
+.app-sidebar-collapse-toggle {
+  color: #1f2937;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  display: block;
+  padding: 0.45rem 0.55rem;
+  text-decoration: none;
+  font-size: 0.95rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+}
+
+.app-sidebar-link:hover,
+.app-sidebar-sublink:hover,
+.app-sidebar-collapse-toggle:hover {
+  background: #f8fafc;
+}
+
+.app-sidebar-link.is-active,
+.app-sidebar-sublink.is-active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.app-sidebar-sublink {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.app-sidebar-subnav {
+  padding-left: 0.5rem;
+}
+
+.app-sidebar-collapse-toggle {
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.app-sidebar-link:focus,
+.app-sidebar-sublink:focus,
+.app-sidebar-collapse-toggle:focus {
+  outline: 2px solid var(--sre-primary);
+  outline-offset: 2px;
+}
+
+.app-sidebar-section-title {
+  color: var(--sre-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+}
+
+.app-shell-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-shell-main-inner {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.app-shell-content-inner {
+  width: 100%;
+}
+
 .skip-link {
   position: absolute;
   left: -999px;
@@ -36,6 +147,57 @@ body.app-shell {
 .header-home-link:focus {
   outline: 2px solid var(--sre-primary);
   outline-offset: 2px;
+}
+
+.context-layout {
+  position: relative;
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  min-height: 520px;
+}
+
+.context-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 0.25rem;
+}
+
+.context-pane-toggle {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  border: 1px solid var(--sre-border);
+  border-right: 0;
+  border-radius: 0.5rem 0 0 0.5rem;
+  background: #ffffff;
+  color: var(--sre-text);
+  min-width: 2.25rem;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.context-pane-toggle.is-open {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.context-pane {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+.context-pane > * {
+  min-width: 420px;
+}
+
+.context-layout.context-pane-open .context-pane {
+  width: min(48vw, 560px);
+}
+
+.context-layout:not(.context-pane-open) .context-pane {
+  pointer-events: none;
 }
 
 .section-eyebrow {
@@ -171,4 +333,51 @@ body.app-shell {
 .step-row:focus {
   outline: 2px solid var(--sre-primary);
   outline-offset: 2px;
+}
+
+@media (max-width: 991.98px) {
+  .app-shell-layout {
+    display: block;
+  }
+
+  .app-shell-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--sre-border);
+    width: 100%;
+    max-height: 45vh;
+  }
+
+  .context-layout {
+    display: block;
+    min-height: 0;
+  }
+
+  .context-main {
+    padding-right: 0;
+  }
+
+  .context-pane-toggle {
+    writing-mode: horizontal-tb;
+    transform: none;
+    border-radius: 0.5rem;
+    border-right: 1px solid var(--sre-border);
+    margin: 0.5rem 0;
+    min-width: auto;
+    padding: 0.45rem 0.65rem;
+  }
+
+  .context-pane > * {
+    min-width: 0;
+  }
+
+  .context-pane,
+  .context-layout.context-pane-open .context-pane {
+    width: 100%;
+  }
+}
+
+@media (min-width: 992px) {
+  .app-shell-sidebar {
+    display: block;
+  }
 }

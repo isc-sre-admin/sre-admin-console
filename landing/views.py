@@ -18,7 +18,13 @@ from landing.backend.mock import (
 )
 from landing.enclaves import SAMPLE_ENCLAVES
 from landing.forms import PipelineStartForm
-from landing.operation_contracts import get_operation_contract
+from landing.operation_contracts import get_operation_contract as get_quick_operation_contract
+from landing.operation_invocation_contracts import (
+    OperationField,
+)
+from landing.operation_invocation_contracts import (
+    get_operation_contract as get_existing_operation_contract,
+)
 from landing.pipeline_contracts import get_pipeline_contract, list_pipeline_contracts
 
 logger = logging.getLogger(__name__)
@@ -182,7 +188,7 @@ def execute_operation(request: HttpRequest, operation_id: str) -> HttpResponse:
             content_type="application/json",
             status=405,
         )
-    contract = get_operation_contract(operation_id)
+    contract = get_quick_operation_contract(operation_id)
     if contract is None:
         return HttpResponse(
             json.dumps({"success": False, "error": "Unknown operation."}),
@@ -196,6 +202,90 @@ def execute_operation(request: HttpRequest, operation_id: str) -> HttpResponse:
         content_type="application/json",
         status=501,
     )
+
+
+def _parse_operation_field_value(field: OperationField, raw_value: str) -> tuple[Any, str | None]:
+    """Convert form input into the expected payload shape for one field."""
+    value = raw_value.strip()
+    if value == "":
+        return None, None
+    if field.value_type == "array":
+        normalized = value.replace("\r", "\n")
+        values = [item.strip() for chunk in normalized.split("\n") for item in chunk.split(",")]
+        return [item for item in values if item], None
+    if field.value_type == "object":
+        try:
+            return json.loads(value), None
+        except json.JSONDecodeError:
+            return None, f"{field.key.replace('_', ' ').capitalize()} must be valid JSON."
+    if field.value_type == "boolean":
+        lowered = value.lower()
+        return lowered in {"1", "true", "yes", "on"}, None
+    if field.value_type == "integer":
+        try:
+            return int(value), None
+        except ValueError:
+            return None, f"{field.key.replace('_', ' ').capitalize()} must be an integer."
+    if field.value_type == "number":
+        try:
+            return float(value), None
+        except ValueError:
+            return None, f"{field.key.replace('_', ' ').capitalize()} must be a number."
+    return value, None
+
+
+@login_required
+def operation_detail(request: HttpRequest, operation_id: str) -> HttpResponse:
+    """Render and submit a generic operation form from existing operation contract metadata."""
+    contract = get_existing_operation_contract(operation_id)
+    if contract is None:
+        raise Http404("Unknown operation.")
+
+    form_errors: list[str] = []
+    result_payload: dict[str, Any] | None = None
+    submitted_payload: dict[str, Any] | None = None
+    mode_initial = "modify" if "modify" in contract.mode_choices else (
+        contract.mode_choices[0] if contract.mode_choices else ""
+    )
+
+    if request.method == "POST":
+        payload: dict[str, Any] = dict(contract.required_literal_values)
+        for required_field in contract.required_fields:
+            raw_value = request.POST.get(required_field.key, "")
+            parsed_value, parse_error = _parse_operation_field_value(required_field, raw_value)
+            if parse_error:
+                form_errors.append(parse_error)
+                continue
+            if parsed_value in (None, "", []):
+                form_errors.append(f"{required_field.key.replace('_', ' ').capitalize()} is required.")
+                continue
+            payload[required_field.key] = parsed_value
+
+        for optional_field in contract.optional_fields:
+            raw_value = request.POST.get(optional_field.key)
+            if raw_value is None:
+                continue
+            parsed_value, parse_error = _parse_operation_field_value(optional_field, raw_value)
+            if parse_error:
+                form_errors.append(parse_error)
+                continue
+            if parsed_value in (None, "", []):
+                continue
+            payload[optional_field.key] = parsed_value
+
+        if not form_errors:
+            submitted_payload = payload
+            result_payload = get_backend().invoke_operation(payload)
+
+    context = {
+        "contract": contract,
+        "form_errors": form_errors,
+        "result_payload": result_payload,
+        "submitted_payload": submitted_payload,
+        "mode_initial": mode_initial,
+        "form_data": request.POST if request.method == "POST" else {},
+    }
+    return render(request, "landing/operation_detail.html", context)
 
 
 def _status_display(raw: str) -> str:
