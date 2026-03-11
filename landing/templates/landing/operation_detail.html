@@ -1,0 +1,92 @@
+{% extends "landing/base.html" %}
+
+{% block title %}{{ contract.label }} | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">Operation</p>
+    <h2 class="mb-2">{{ contract.label }}</h2>
+    <p class="text-secondary mb-2">{{ contract.function }}</p>
+    {% if contract.description %}
+      <p class="small text-secondary mb-0">{{ contract.description }}</p>
+    {% endif %}
+  </section>
+
+  {% if operation_result %}
+    <section class="mb-4">
+      <div class="alert alert-success mb-0" role="status" aria-live="polite">
+        <h3 class="h5 mb-2">Operation completed</h3>
+        <p class="mb-2">{{ operation_result.message|default:"The operation completed successfully." }}</p>
+        <details>
+          <summary class="small">Response details</summary>
+          <ul class="small mt-2 mb-0">
+            {% for key, value in operation_result.items %}
+              <li><code>{{ key }}</code>: {{ value }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+      </div>
+    </section>
+  {% endif %}
+
+  <section>
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h3 class="h5 mb-3">Operation inputs</h3>
+        {% if form.non_field_errors %}
+          <div class="alert alert-warning" role="alert">
+            {% for error in form.non_field_errors %}
+              <p class="mb-0">{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <form method="post" novalidate aria-label="{{ contract.label }} form">
+          {% csrf_token %}
+          {% for field in form %}
+            {% if field.is_hidden %}
+              {{ field }}
+            {% else %}
+              <div class="mb-3">
+                {% if field.field.widget.input_type == "checkbox" %}
+                  <div class="form-check">
+                    {{ field }}
+                    <label class="form-check-label" for="{{ field.id_for_label }}">
+                      {{ field.label }}
+                      {% if field.field.required %}
+                        <span class="text-danger" aria-hidden="true">*</span>
+                        <span class="visually-hidden">(required)</span>
+                      {% endif %}
+                    </label>
+                  </div>
+                {% else %}
+                  <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                    {% if field.field.required %}
+                      <span class="text-danger" aria-hidden="true">*</span>
+                      <span class="visually-hidden">(required)</span>
+                    {% endif %}
+                  </label>
+                  {{ field }}
+                {% endif %}
+                {% if field.help_text %}
+                  <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in field.errors %}
+                      <p class="mb-0">{{ error }}</p>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="submit">Run operation</button>
+            <a class="btn btn-outline-secondary" href="{% url 'landing:home' %}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+{% endblock content %}

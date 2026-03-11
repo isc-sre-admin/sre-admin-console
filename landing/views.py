@@ -18,7 +18,9 @@ from landing.backend.mock import (
 )
 from landing.enclaves import SAMPLE_ENCLAVES
 from landing.forms import PipelineStartForm
-from landing.operation_contracts import get_operation_contract
+from landing.operation_contracts import get_operation_contract as get_quick_operation_contract
+from landing.operation_forms import OperationExecutionForm
+from landing.operation_invocation_contracts import get_operation_contract
 from landing.pipeline_contracts import get_pipeline_contract, list_pipeline_contracts
 
 logger = logging.getLogger(__name__)
@@ -182,7 +184,7 @@ def execute_operation(request: HttpRequest, operation_id: str) -> HttpResponse:
             content_type="application/json",
             status=405,
         )
-    contract = get_operation_contract(operation_id)
+    contract = get_quick_operation_contract(operation_id)
     if contract is None:
         return HttpResponse(
             json.dumps({"success": False, "error": "Unknown operation."}),
@@ -196,6 +198,51 @@ def execute_operation(request: HttpRequest, operation_id: str) -> HttpResponse:
         content_type="application/json",
         status=501,
     )
+
+
+@login_required
+def operation_detail(request: HttpRequest, operation_id: str) -> HttpResponse:
+    """Render and execute a contract-driven operation form."""
+    contract = get_operation_contract(operation_id)
+    if contract is None:
+        raise Http404("Unknown operation.")
+
+    initial_payload: dict[str, Any] = {}
+    selected_enclave = (request.GET.get("enclave") or "").strip()
+    if selected_enclave:
+        initial_payload["destination_account_id"] = selected_enclave
+
+    form = OperationExecutionForm(
+        request.POST or None,
+        contract=contract,
+        initial_payload=initial_payload if request.method != "POST" else None,
+    )
+    operation_result: dict[str, Any] | None = None
+    if request.method == "POST":
+        if form.is_valid():
+            payload = form.build_payload()
+            result = get_backend().invoke_operation(payload)
+            if result.get("status") == "error":
+                form.add_error(
+                    None,
+                    result.get("message") or result.get("error", "The operation failed."),
+                )
+            else:
+                operation_result = result
+                form = OperationExecutionForm(
+                    contract=contract,
+                    initial_payload=payload,
+                )
+        else:
+            form.add_error(None, "Please resolve the validation errors and submit again.")
+
+    context = {
+        "contract": contract,
+        "form": form,
+        "operation_result": operation_result,
+        "current_operation_id": contract.id,
+    }
+    return render(request, "landing/operation_detail.html", context)
 
 
 def _status_display(raw: str) -> str:
@@ -369,6 +416,7 @@ def home(request: HttpRequest) -> HttpResponse:
         "default_end_date": end_date.isoformat(),
         "poll_interval_seconds": poll_seconds,
         "execution_detail_url_template": execution_detail_url_template,
+        "current_pipeline_id": None,
     }
     return render(request, "landing/home.html", context)
 
@@ -468,6 +516,7 @@ def start_pipeline_execution(request: HttpRequest, pipeline_id: str) -> HttpResp
         "available_contracts": list_pipeline_contracts(),
         "form": form,
         "started_execution": started_execution,
+        "current_pipeline_id": contract.id,
     }
     return render(request, "landing/start_pipeline_execution.html", context)
 
@@ -625,6 +674,7 @@ def pipeline_execution_detail(request: HttpRequest, execution_id: str) -> HttpRe
         "failure_cause": failure_cause,
         "started_at_full": started_at_full,
         "stopped_at": stopped_at,
+        "current_pipeline_id": execution.get("name"),
     }
 
     wants_json = (

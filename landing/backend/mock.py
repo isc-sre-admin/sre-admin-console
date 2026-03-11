@@ -186,6 +186,75 @@ MOCK_ENDPOINTS = [
     },
 ]
 
+MOCK_VULNERABILITIES = [
+    {
+        "destination_account_id": "111111111111",
+        "category": "actionable",
+        "assessed_criticality": "High",
+        "status": "Open",
+        "days_open": "12",
+        "days_actionable": "9",
+        "account_id": "111111111111",
+        "finding_type": "Package",
+        "package_name": "openssl",
+        "installed_version": "3.0.7",
+        "fixed_version": "3.0.12",
+        "vulnerability_id": "CVE-2026-1001",
+        "vulnerability_source": "Inspector",
+        "vulnerability_reported_at": "2026-03-01",
+        "fix_available": "true",
+        "exploit_available": "false",
+        "resource_type": "ec2",
+        "resource_id": "i-0a1b2c3d4e5f1111",
+        "tag_name": "analytics-node-1111",
+        "comments": "Patch during next enclave window.",
+    },
+    {
+        "destination_account_id": "111111111111",
+        "category": "planned",
+        "assessed_criticality": "Medium",
+        "status": "Open",
+        "days_open": "5",
+        "days_actionable": "3",
+        "account_id": "111111111111",
+        "finding_type": "Package",
+        "package_name": "curl",
+        "installed_version": "8.5.0",
+        "fixed_version": "8.6.1",
+        "vulnerability_id": "CVE-2026-1055",
+        "vulnerability_source": "Inspector",
+        "vulnerability_reported_at": "2026-03-06",
+        "fix_available": "true",
+        "exploit_available": "false",
+        "resource_type": "workspace",
+        "resource_id": "ws-012345671111",
+        "tag_name": "research-workspace-1111",
+        "comments": "Track with March workstation image refresh.",
+    },
+    {
+        "destination_account_id": "111111111111",
+        "category": "informational",
+        "assessed_criticality": "Low",
+        "status": "Observed",
+        "days_open": "2",
+        "days_actionable": "0",
+        "account_id": "111111111111",
+        "finding_type": "Configuration",
+        "package_name": "",
+        "installed_version": "",
+        "fixed_version": "",
+        "vulnerability_id": "CFG-2026-0201",
+        "vulnerability_source": "Security Hub",
+        "vulnerability_reported_at": "2026-03-09",
+        "fix_available": "false",
+        "exploit_available": "false",
+        "resource_type": "ec2",
+        "resource_id": "i-09f8e7d6c5b41111",
+        "tag_name": "batch-runner-1111",
+        "comments": "Manual observation captured for follow-up.",
+    },
+]
+
 # Execution detail mock: steps and failure cause for demo.
 MOCK_FAILURE_CAUSE = (
     "SSM Run Command failed: Instance i-0123456789abcdef0 is not in target state. "
@@ -260,6 +329,29 @@ class MockBackend(Backend):
             if not username:
                 return {"status": "error", "error": "ValidationError", "message": "Username is required."}
             return {"status": "success", "message": f"User {username} has been unlocked."}
+        if operation == "create-poam-entry":
+            mode = str(payload.get("mode") or "").strip().lower()
+            poam_id = str(payload.get("poam_id") or "").strip()
+            status = str(payload.get("status") or "").strip().lower()
+            if not poam_id or status not in {"open", "closed"}:
+                return {
+                    "status": "error",
+                    "error": "ValidationError",
+                    "message": "poam_id and status are required.",
+                }
+            if mode == "verify":
+                return {
+                    "status": "success",
+                    "verified": True,
+                    "poam_id": poam_id,
+                    "message": f"POAM entry {poam_id} verified.",
+                }
+            return {
+                "status": "success",
+                "poam_id": poam_id,
+                "entry_status": status,
+                "message": f"POAM entry {poam_id} saved.",
+            }
         # Generic success for any other operation in contracts
         return {"status": "success", "message": f"Operation {operation} completed (mock)."}
 
@@ -395,6 +487,21 @@ class MockBackend(Backend):
                 if (
                     (destination_account_id is None or item.get("destination_account_id") == destination_account_id)
                     and (destination_region is None or item.get("region") == destination_region)
+                )
+            ]
+            return {"status": "success", "result": result}
+
+        if query == "list-vulnerabilities":
+            destination_account_id = payload.get("destination_account_id")
+            resource_id = payload.get("resource_id")
+            category = payload.get("category")
+            result = [
+                item
+                for item in MOCK_VULNERABILITIES
+                if (
+                    (destination_account_id is None or item.get("destination_account_id") == destination_account_id)
+                    and (resource_id is None or item.get("resource_id") == resource_id)
+                    and (category is None or item.get("category") == category)
                 )
             ]
             return {"status": "success", "result": result}

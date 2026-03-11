@@ -363,6 +363,7 @@ def endpoint_detail(
     context = {
         "enclave": enclave,
         "endpoint": endpoint,
+        "region": region,
         "ansible_contract": ansible_contract,
         "rerun_contract": rerun_contract,
         "default_playbook": default_playbook,

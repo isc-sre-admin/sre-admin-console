@@ -1,0 +1,83 @@
+{% extends "landing/base.html" %}
+
+{% block title %}Plan of Actions and Milestones | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <section class="mb-4 d-flex flex-wrap align-items-start justify-content-between gap-3">
+    <div>
+      <p class="section-eyebrow mb-1">POAM management</p>
+      <h2 class="mb-1">Plan of Actions and Milestones</h2>
+      <p class="text-secondary mb-0">Track open and closed remediation items while the list API remains under development.</p>
+    </div>
+    <a href="{% url 'poam:new' %}" class="btn btn-primary">Add POAM entry</a>
+  </section>
+
+  <section class="mb-4">
+    <div class="d-flex flex-wrap gap-2" role="tablist" aria-label="POAM status filters">
+      <a
+        href="{% url 'poam:list' %}?status=open"
+        class="btn {% if active_filter == 'open' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+      >
+        Open POAMs ({{ open_count }})
+      </a>
+      <a
+        href="{% url 'poam:list' %}?status=closed"
+        class="btn {% if active_filter == 'closed' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+      >
+        Closed POAMs ({{ closed_count }})
+      </a>
+      <a
+        href="{% url 'poam:list' %}?status=all"
+        class="btn {% if active_filter == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+      >
+        All
+      </a>
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      {% if entries %}
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">POAM ID</th>
+                <th scope="col">Status</th>
+                <th scope="col">Owner</th>
+                <th scope="col">Source / Enclave</th>
+                <th scope="col">Due date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in entries %}
+                <tr>
+                  <td>
+                    <a href="{% url 'poam:edit' poam_id=entry.poam_id %}">{{ entry.poam_id }}</a>
+                  </td>
+                  <td>
+                    <span class="badge {% if entry.status == 'open' %}status-running{% else %}status-succeeded{% endif %}">
+                      {{ entry.status }}
+                    </span>
+                  </td>
+                  <td>{{ entry.owner|default:"-" }}</td>
+                  <td>
+                    {% if entry.source %}{{ entry.source }}{% else %}-{% endif %}
+                    {% if entry.enclave_names %}
+                      <div class="small text-secondary">{{ entry.enclave_names|join:", " }}</div>
+                    {% endif %}
+                  </td>
+                  <td>{{ entry.due_date|default:"-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-4">
+          <p class="mb-0 text-secondary">No POAM entries match the selected status filter.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock content %}

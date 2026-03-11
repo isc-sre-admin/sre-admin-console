@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'landing',
     'endpoints',
+    'poam',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +81,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'landing.context_processors.quick_operations',
+                'landing.context_processors.shell_navigation',
             ],
         },
     },
@@ -145,9 +147,9 @@ LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-# Backend: mock (default) or real Lambda/Step Functions. Set USE_MOCK_BACKEND = False
-# and configure AWS ARNs below (via environment variables or .env) to use the real backend.
-USE_MOCK_BACKEND = False
+# Backend: toggle mock vs real Lambda/Step Functions with USE_MOCK_BACKEND=true|false.
+# Keep the committed default pointed at the real backend unless the environment overrides it.
+USE_MOCK_BACKEND = os.getenv("USE_MOCK_BACKEND", "false").strip().lower() in {"1", "true", "yes", "on"}
 # Stack name passed to query Lambda (e.g. list-pipeline-executions) so it knows which stack to use.
 SRE_STACK_NAME = os.getenv("SRE_STACK_NAME", "sre-management")
 # ARNs for real backend (required when USE_MOCK_BACKEND is False). These should be provided

@@ -1,0 +1,123 @@
+{% extends "landing/base.html" %}
+
+{% block title %}{% if existing_entry %}Edit{% else %}Add{% endif %} POAM entry | SRE Operations Console{% endblock title %}
+
+{% block content %}
+  <section class="mb-4">
+    <p class="section-eyebrow mb-1">POAM entry</p>
+    <h2 class="mb-2">{% if existing_entry %}Edit{% else %}Add{% endif %} POAM entry</h2>
+    <p class="text-secondary mb-2">{{ contract.function }}</p>
+    <p class="small text-secondary mb-0">Payloads follow the `create-poam-entry` contract exactly, with list fields accepted as one value per line.</p>
+  </section>
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-body">
+      {% if form.non_field_errors %}
+        <div class="alert alert-warning" role="alert">
+          {% for error in form.non_field_errors %}
+            <p class="mb-0">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-4">
+          <div class="col-12 col-xl-6">
+            <h3 class="h5 mb-3">Identification</h3>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.mode.id_for_label }}">Mode</label>
+              {{ form.mode }}
+              {% if form.mode.help_text %}<div class="form-text">{{ form.mode.help_text }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.poam_id.id_for_label }}">POAM ID</label>
+              {{ form.poam_id }}
+              {% if form.poam_id.errors %}<div class="invalid-feedback d-block">{{ form.poam_id.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+              {{ form.status }}
+              {% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.owner.id_for_label }}">Owner</label>
+              {{ form.owner }}
+            </div>
+            <div class="mb-0">
+              <label class="form-label" for="{{ form.source.id_for_label }}">Source</label>
+              {{ form.source }}
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-6">
+            <h3 class="h5 mb-3">Context</h3>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.enclave_ids.id_for_label }}">Related enclave IDs</label>
+              {{ form.enclave_ids }}
+              <div class="form-text">{{ form.enclave_ids.help_text }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.enclave_names.id_for_label }}">Related enclave names</label>
+              {{ form.enclave_names }}
+              <div class="form-text">{{ form.enclave_names.help_text }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.vulnerability_ids.id_for_label }}">Vulnerability IDs</label>
+              {{ form.vulnerability_ids }}
+              <div class="form-text">{{ form.vulnerability_ids.help_text }}</div>
+            </div>
+            <div class="mb-0">
+              <label class="form-label" for="{{ form.resource_ids.id_for_label }}">Resource IDs</label>
+              {{ form.resource_ids }}
+              <div class="form-text">{{ form.resource_ids.help_text }}</div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <h3 class="h5 mb-3">Timeline</h3>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="{{ form.create_date.id_for_label }}">Create date</label>
+            {{ form.create_date }}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="{{ form.due_date.id_for_label }}">Due date</label>
+            {{ form.due_date }}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="{{ form.completion_date.id_for_label }}">Completion date</label>
+            {{ form.completion_date }}
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="{{ form.sequence_number.id_for_label }}">Sequence number</label>
+            {{ form.sequence_number }}
+          </div>
+
+          <div class="col-12">
+            <h3 class="h5 mb-3">Details</h3>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.observation.id_for_label }}">Observation</label>
+              {{ form.observation }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.plan.id_for_label }}">Plan</label>
+              {{ form.plan }}
+            </div>
+            <div class="mb-0">
+              <label class="form-label" for="{{ form.comments.id_for_label }}">Comments</label>
+              {{ form.comments }}
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <button type="submit" class="btn btn-primary">{% if existing_entry %}Save{% else %}Create{% endif %} POAM entry</button>
+          <a href="{% url 'poam:list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock content %}

@@ -1,3 +1,4 @@
+{% url 'endpoints:enclave-vulnerabilities' enclave_id=enclave.destination_account_id as vuln_base_url %}
 <section class="card border-0 shadow-sm h-100">
   <div class="card-body d-flex flex-column">
     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -33,11 +34,8 @@
 
     <div
       id="vuln-table-container"
-      class="table-responsive mb-3"
-      style="max-height: 420px; overflow-y: auto;"
-      data-enclave-id="{{ enclave.destination_account_id }}"
-      data-region="{{ region }}"
-      data-vuln-url="{% url 'endpoints:enclave-vulnerabilities' enclave_id=enclave.destination_account_id %}?region={{ region }}"
+      class="table-responsive mb-3 context-card-scroll"
+      data-vuln-url="{{ vuln_base_url }}?region={{ region }}{% if vulnerability_resource_id %}&resource_id={{ vulnerability_resource_id }}{% endif %}"
     >
       <table class="table table-sm align-middle mb-0" id="vuln-table">
         <thead>
@@ -50,6 +48,14 @@
         </tbody>
       </table>
     </div>
+
+    <p
+      id="vuln-empty-state"
+      class="small text-secondary border rounded bg-light p-3 mb-3"
+      data-empty-message="{{ vuln_empty_message|default:'No vulnerabilities matched the current filters.' }}"
+      data-error-message="Vulnerability data could not be loaded. Please try again."
+      hidden
+    ></p>
 
     <div class="mt-auto">
       <ul class="nav nav-tabs justify-content-start" id="vuln-tablist" role="tablist">

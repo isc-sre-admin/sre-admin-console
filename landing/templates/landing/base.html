@@ -15,67 +15,184 @@
   </head>
   <body class="app-shell">
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    <header class="border-bottom bg-white">
-      <div class="container py-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
-            <div>
-              <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
-              <h1 class="h4 mb-0">SRE Operations Console</h1>
-            </div>
-            <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
-          </a>
-          <nav class="d-flex align-items-center gap-2" aria-label="Main">
-            {% if user.is_authenticated %}
-              {% if quick_operations %}
-                <div class="dropdown">
+    <div class="app-shell-layout {% if not user.is_authenticated %}app-shell-layout-public{% endif %}">
+      <div class="app-shell-main">
+        <header class="app-shell-header border-bottom bg-white">
+          <div class="app-shell-main-inner py-3">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+              <div class="d-flex align-items-center gap-2">
+                {% if user.is_authenticated %}
                   <button
-                    class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                    class="btn btn-outline-secondary btn-sm d-lg-none"
                     type="button"
-                    id="operations-menu"
-                    data-bs-toggle="dropdown"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#primary-nav-sidebar"
+                    aria-controls="primary-nav-sidebar"
                     aria-expanded="false"
-                    aria-haspopup="true"
-                    aria-label="Quick operations menu"
+                    aria-label="Toggle navigation"
                   >
-                    Actions
+                    Nav
                   </button>
-                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="operations-menu">
-                    {% for op in quick_operations %}
-                      <li>
-                        <button
-                          type="button"
-                          class="dropdown-item"
-                          data-bs-toggle="modal"
-                          data-bs-target="#operation-modal-{{ op.id }}"
-                          data-operation-id="{{ op.id }}"
-                          data-operation-label="{{ op.label }}"
+                {% endif %}
+                <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
+                  <div>
+                    <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
+                    <h1 class="h4 mb-0">SRE Operations Console</h1>
+                  </div>
+                  <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
+                </a>
+              </div>
+              <nav class="d-flex align-items-center gap-2 flex-wrap" aria-label="{% if user.is_authenticated %}Session{% else %}Main{% endif %}">
+                {% if user.is_authenticated %}
+                  {% if quick_operations %}
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                        type="button"
+                        id="operations-menu"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-haspopup="true"
+                        aria-label="Quick operations menu"
+                      >
+                        Actions
+                      </button>
+                      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="operations-menu">
+                        {% for op in quick_operations %}
+                          <li>
+                            <button
+                              type="button"
+                              class="dropdown-item"
+                              data-bs-toggle="modal"
+                              data-bs-target="#operation-modal-{{ op.id }}"
+                              data-operation-id="{{ op.id }}"
+                              data-operation-label="{{ op.label }}"
+                            >
+                              {{ op.label }}
+                            </button>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  {% endif %}
+                  <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
+                  <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
+                  </form>
+                {% else %}
+                  <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
+                {% endif %}
+              </nav>
+            </div>
+          </div>
+        </header>
+
+        <div class="app-shell-main-inner app-shell-workspace">
+          {% if user.is_authenticated %}
+            <aside class="app-shell-sidebar collapse d-lg-block" id="primary-nav-sidebar">
+              <div class="app-shell-sidebar-inner">
+                <nav aria-label="Primary">
+                  <div class="mb-4">
+                    <a
+                      href="{% url 'landing:home' %}"
+                      class="app-shell-nav-link app-shell-nav-link-top {% if current_url_name == 'home' or current_url_name == 'start-pipeline-execution' or current_url_name == 'pipeline-execution-detail' %}is-active{% endif %}"
+                      {% if current_url_name == 'home' or current_url_name == 'start-pipeline-execution' or current_url_name == 'pipeline-execution-detail' %}aria-current="page"{% endif %}
+                    >
+                      Workflows
+                    </a>
+                    <div class="app-shell-nav-children">
+                      {% for item in workflow_nav_items %}
+                        <a
+                          href="{% url 'landing:start-pipeline-execution' pipeline_id=item.id %}"
+                          class="app-shell-nav-link {% if current_pipeline_id == item.id %}is-active{% endif %}"
+                          {% if current_pipeline_id == item.id %}aria-current="page"{% endif %}
                         >
-                          {{ op.label }}
+                          {{ item.label }}
+                        </a>
+                      {% endfor %}
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <a
+                      href="{% url 'endpoints:index' %}"
+                      class="app-shell-nav-link app-shell-nav-link-top {% if current_app_name == 'endpoints' %}is-active{% endif %}"
+                      {% if current_app_name == 'endpoints' %}aria-current="page"{% endif %}
+                    >
+                      Endpoint Management
+                    </a>
+                  </div>
+
+                  <div class="mb-4">
+                    <a
+                      href="{% url 'poam:list' %}"
+                      class="app-shell-nav-link app-shell-nav-link-top {% if current_app_name == 'poam' %}is-active{% endif %}"
+                      {% if current_app_name == 'poam' %}aria-current="page"{% endif %}
+                    >
+                      Plan of Actions and Milestones
+                    </a>
+                  </div>
+
+                  <div>
+                    <p class="app-shell-nav-section-label">Operations</p>
+                    <div class="app-shell-nav-children mb-3">
+                      {% for item in common_operation_items %}
+                        <a
+                          href="{% url 'landing:operation-detail' operation_id=item.id %}"
+                          class="app-shell-nav-link {% if current_operation_id == item.id %}is-active{% endif %}"
+                          {% if current_operation_id == item.id %}aria-current="page"{% endif %}
+                        >
+                          {{ item.label }}
+                        </a>
+                      {% endfor %}
+                    </div>
+                    {% for category in operation_nav_categories %}
+                      <div class="app-shell-operation-group">
+                        <button
+                          class="app-shell-operation-toggle"
+                          type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#operation-category-{{ category.id }}"
+                          aria-expanded="false"
+                          aria-controls="operation-category-{{ category.id }}"
+                        >
+                          {{ category.label }}
                         </button>
-                      </li>
+                        <div class="collapse" id="operation-category-{{ category.id }}">
+                          <div class="app-shell-nav-children pt-2">
+                            {% for item in category.items %}
+                              <a
+                                href="{% url 'landing:operation-detail' operation_id=item.id %}"
+                                class="app-shell-nav-link {% if current_operation_id == item.id %}is-active{% endif %}"
+                                {% if current_operation_id == item.id %}aria-current="page"{% endif %}
+                              >
+                                {{ item.label }}
+                              </a>
+                            {% endfor %}
+                          </div>
+                        </div>
+                      </div>
                     {% endfor %}
-                  </ul>
-                </div>
-              {% endif %}
-              <a href="{% url 'endpoints:index' %}" class="btn btn-outline-secondary btn-sm">Endpoints</a>
-              <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
-              <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
-              </form>
-            {% else %}
-              <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
+                  </div>
+                </nav>
+              </div>
+            </aside>
+          {% endif %}
+
+          <main id="main-content" class="app-shell-content py-4">
+            {% if messages %}
+              <div class="mb-4">
+                {% for message in messages %}
+                  <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="status">{{ message }}</div>
+                {% endfor %}
+              </div>
             {% endif %}
-          </nav>
+            {% block content %}{% endblock content %}
+          </main>
         </div>
       </div>
-    </header>
-    <main id="main-content" class="py-4">
-      <div class="container">
-        {% block content %}{% endblock content %}
-      </div>
-    </main>
+    </div>
     {% for op in quick_operations %}
       {% if op.id == 'unlock-user' %}
         <div

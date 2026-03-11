@@ -2,6 +2,16 @@
 
 Django-based administrative console for AWS Secure Research Enclave (SRE) operational workflows.
 
+## Shell layout and navigation
+
+Authenticated pages now share a consistent application shell:
+
+- **Left navigation pane** for workflows, endpoint management, POAM management, and grouped operations.
+- **Central content pane** for dashboards, forms, endpoint detail, and POAM workflows.
+- **Right-hand contextual pane** for feature-specific tools, starting with Vulnerability Management on enclave and endpoint detail pages.
+
+The sidebar keeps the major workflows visible at all times, and less-common operations are grouped into collapsible categories to keep the UI discoverable without overwhelming the main workspace.
+
 ## Landing page
 
 The root route (`/`) provides a workflow-oriented landing page for operations engineers:
@@ -23,18 +33,29 @@ Short-running operations that need minimal input are available from an **Operati
 
 Quick operations are defined by YAML contracts under `backend/proposed-changes/operations/` (e.g. `unlock-user.yaml`). The console loads these and exposes them in the nav; the first supported operation is **Unlock user**.
 
+For deeper workflows, the left-hand sidebar also exposes contract-driven **full-page operation forms** under grouped operation categories.
+
 ## Endpoint management
 
 The route `/endpoints/` provides enclave drill-down and endpoint management screens:
 
 - **Endpoints index**: List enclaves (research group, enclave, destination account) and open endpoint inventory by enclave.
-- **Enclave detail**: Show EC2 and WorkSpace endpoints for the enclave, including region and SSM registration status.
+- **Enclave detail**: Show EC2 and WorkSpace endpoints for the enclave, including region and SSM registration status, with a toggleable right-hand Vulnerability Management pane.
 - **Endpoint detail**: Show Session Manager connect guidance plus contract-driven node actions:
   - `apply-ansible-playbook`
   - `apply-playbook-to-node`
+- **Contextual vulnerability pane**: Endpoint detail reuses the same right-hand pane pattern and remembers the user’s open/closed preference with `localStorage`.
 - **Provisioning links**: Endpoint detail includes quick links to start the provision Linux/Windows WorkSpace and EC2 pipelines with `?enclave=<destination_account_id>` prefilled.
 
 Endpoint inventory data is requested via the proposed `list-endpoints` query contract. If the backend query is not implemented yet, the page shows sample rows so the UI remains usable for prototyping.
+
+## POAM management
+
+The route `/poam/` provides a prototype Plan of Actions and Milestones workflow:
+
+- **List view** with Open, Closed, and All filters.
+- **Create/edit form** that maps directly to the `create-poam-entry` operation contract.
+- **Prototype storage** backed by sample data plus session-scoped entries so the UI remains usable until a list query is available.
 
 ## Start pipeline execution
 

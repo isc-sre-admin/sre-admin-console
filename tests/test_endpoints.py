@@ -35,7 +35,8 @@ def test_enclave_detail_renders_endpoint_table(authenticated_client) -> None:
     page = response.content.decode()
     assert "analytics-node-1111" in page
     assert "research-workspace-1111" in page
-    assert "Manage endpoint" in page
+    assert "Vulnerability Management" in page
+    assert 'data-pane-storage-key="sreConsole.vulnPaneOpen.enclave"' in page
 
 
 @pytest.mark.django_db
@@ -57,6 +58,8 @@ def test_endpoint_detail_managed_shows_session_manager_and_actions(authenticated
     assert "apply-ansible-playbook" in page
     assert "apply-playbook-to-node" in page
     assert "?enclave=111111111111" in page
+    assert "Vulnerability Management" in page
+    assert 'data-pane-storage-key="sreConsole.vulnPaneOpen.endpoint"' in page
 
 
 @pytest.mark.django_db
