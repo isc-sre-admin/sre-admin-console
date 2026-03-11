@@ -50,6 +50,7 @@
       data-enclave-id="{{ enclave.destination_account_id }}"
       data-region="{{ region }}"
       data-vuln-url="{% url 'endpoints:enclave-vulnerabilities' enclave_id=enclave.destination_account_id %}?region={{ region }}"
+      {% if fixed_resource_id %}data-fixed-resource-id="{{ fixed_resource_id }}"{% endif %}
     >
       <table class="table table-sm align-middle mb-0" id="vuln-table">
         <thead>

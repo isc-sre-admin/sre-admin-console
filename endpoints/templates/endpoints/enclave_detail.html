@@ -1,4 +1,5 @@
 {% extends "landing/base.html" %}
+{% load static %}
 
 {% block title %}{{ enclave.enclave_name }} endpoints | SRE Operations Console{% endblock title %}
 
@@ -14,6 +15,7 @@
   <section class="mb-4">
     <p class="section-eyebrow mb-1">Enclave</p>
     <h2 class="mb-1">{{ enclave.enclave_name }}</h2>
+    <p class="text-secondary mb-2">Manage endpoint inventory and vulnerability context for this enclave.</p>
     <p class="text-secondary mb-2">
       {{ enclave.research_group }} · {{ enclave.destination_account_id }} · Region {{ region }}
     </p>
@@ -24,9 +26,9 @@
     <div class="alert alert-info" role="status">{{ backend_note }}</div>
   {% endif %}
 
-  <div class="row g-4">
-    <div class="col-12 col-lg-5">
-      <section class="card border-0 shadow-sm">
+  <div class="context-layout">
+    <div class="context-main">
+      <section class="card border-0 shadow-sm h-100">
         <div class="card-body p-0">
           {% if endpoints %}
             <div class="table-responsive">
@@ -51,9 +53,7 @@
                     >
                       <td>{{ endpoint.resource_type|upper }}</td>
                       <td>
-                        <a
-                          href="{% url 'endpoints:endpoint-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}"
-                        >
+                        <a href="{% url 'endpoints:endpoint-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}">
                           {{ endpoint.resource_id }}
                         </a>
                       </td>
@@ -68,9 +68,7 @@
                       </td>
                       <td>{{ endpoint.ssm_status }}</td>
                       <td class="text-nowrap">
-                        <a
-                          href="{% url 'endpoints:patch-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}"
-                        >
+                        <a href="{% url 'endpoints:patch-detail' enclave_id=enclave.destination_account_id resource_type=endpoint.resource_type resource_id=endpoint.resource_id %}">
                           {% if endpoint.patch_managed %}
                             {% if endpoint.last_patched_at %}
                               {{ endpoint.last_patched_at }}
@@ -95,9 +93,22 @@
         </div>
       </section>
     </div>
-    <div class="col-12 col-lg-7">
+
+    <button
+      type="button"
+      class="context-pane-toggle"
+      data-context-pane-toggle
+      data-storage-key="sreConsole.vulnPaneOpen.enclave"
+      aria-controls="enclave-vulnerability-pane"
+      aria-expanded="false"
+      aria-label="Toggle Vulnerability Management pane"
+    >
+      Vulnerability Management
+    </button>
+
+    <aside class="context-pane" id="enclave-vulnerability-pane" hidden aria-hidden="true">
       {% include "endpoints/_vulnerabilities_panel.html" with enclave=enclave region=region %}
-    </div>
+    </aside>
   </div>
 {% endblock content %}
 

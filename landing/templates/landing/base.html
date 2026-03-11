@@ -15,67 +15,219 @@
   </head>
   <body class="app-shell">
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    <header class="border-bottom bg-white">
-      <div class="container py-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
-            <div>
-              <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
-              <h1 class="h4 mb-0">SRE Operations Console</h1>
-            </div>
-            <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
-          </a>
-          <nav class="d-flex align-items-center gap-2" aria-label="Main">
-            {% if user.is_authenticated %}
-              {% if quick_operations %}
-                <div class="dropdown">
-                  <button
-                    class="btn btn-outline-secondary btn-sm dropdown-toggle"
-                    type="button"
-                    id="operations-menu"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                    aria-label="Quick operations menu"
+    {% with current_view=request.resolver_match.view_name|default:"" current_path=request.path|default:"" %}
+      <div class="app-shell-layout">
+        {% if user.is_authenticated %}
+          <aside class="app-shell-sidebar" id="primary-sidebar">
+            <nav aria-label="Primary" class="app-sidebar-nav">
+              <p class="app-sidebar-title">Navigation</p>
+              <a
+                href="{% url 'landing:home' %}"
+                class="app-sidebar-link {% if current_view == 'landing:home' or current_view == 'landing:start-pipeline-execution' or current_view == 'landing:pipeline-execution-detail' %}is-active{% endif %}"
+              >
+                Workflows
+              </a>
+              <ul class="app-sidebar-subnav list-unstyled mb-3">
+                <li>
+                  <a
+                    class="app-sidebar-sublink {% if 'pipelines/provision-ad-connector/start/' in current_path %}is-active{% endif %}"
+                    href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-ad-connector' %}"
                   >
-                    Actions
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="operations-menu">
-                    {% for op in quick_operations %}
-                      <li>
-                        <button
-                          type="button"
-                          class="dropdown-item"
-                          data-bs-toggle="modal"
-                          data-bs-target="#operation-modal-{{ op.id }}"
-                          data-operation-id="{{ op.id }}"
-                          data-operation-label="{{ op.label }}"
-                        >
-                          {{ op.label }}
-                        </button>
-                      </li>
-                    {% endfor %}
+                    Set up new enclave
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="app-sidebar-sublink {% if 'pipelines/provision-linux-workspace/start/' in current_path %}is-active{% endif %}"
+                    href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-linux-workspace' %}"
+                  >
+                    Provision Linux WorkSpace
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="app-sidebar-sublink {% if 'pipelines/provision-windows-workspace/start/' in current_path %}is-active{% endif %}"
+                    href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-windows-workspace' %}"
+                  >
+                    Provision Windows WorkSpace
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="app-sidebar-sublink {% if 'pipelines/provision-ec2-instance/start/' in current_path %}is-active{% endif %}"
+                    href="{% url 'landing:start-pipeline-execution' pipeline_id='provision-ec2-instance' %}"
+                  >
+                    Provision EC2 instance
+                  </a>
+                </li>
+              </ul>
+
+              <a
+                href="{% url 'endpoints:index' %}"
+                class="app-sidebar-link {% if 'endpoints:' in current_view %}is-active{% endif %}"
+              >
+                Endpoint Management
+              </a>
+
+              <a
+                href="{% url 'poam:list' %}"
+                class="app-sidebar-link {% if 'poam:' in current_view %}is-active{% endif %}"
+              >
+                Plan of Actions and Milestones
+              </a>
+
+              <section class="app-sidebar-ops-section" aria-label="Operations">
+                <p class="app-sidebar-section-title mb-2">Operations</p>
+                <a
+                  href="{% url 'landing:operation-detail' operation_id='unlock-user' %}"
+                  class="app-sidebar-link mb-2 {% if 'operations/unlock-user/' in current_path %}is-active{% endif %}"
+                >
+                  Unlock user
+                </a>
+
+                <button
+                  type="button"
+                  class="app-sidebar-collapse-toggle"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#ops-user-management"
+                  aria-expanded="{% if 'operations/unlock-user/' in current_path %}true{% else %}false{% endif %}"
+                >
+                  User Management
+                </button>
+                <div class="collapse {% if 'operations/unlock-user/' in current_path %}show{% endif %}" id="ops-user-management">
+                  <ul class="app-sidebar-subnav list-unstyled mb-2">
+                    <li>
+                      <a
+                        class="app-sidebar-sublink {% if 'operations/unlock-user/' in current_path %}is-active{% endif %}"
+                        href="{% url 'landing:operation-detail' operation_id='unlock-user' %}"
+                      >
+                        unlock-user
+                      </a>
+                    </li>
                   </ul>
                 </div>
-              {% endif %}
-              <a href="{% url 'endpoints:index' %}" class="btn btn-outline-secondary btn-sm">Endpoints</a>
-              <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
-              <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
-              </form>
-            {% else %}
-              <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
-            {% endif %}
-          </nav>
+
+                <button type="button" class="app-sidebar-collapse-toggle" data-bs-toggle="collapse" data-bs-target="#ops-enclave-setup" aria-expanded="false">
+                  Enclave Setup
+                </button>
+                <div class="collapse" id="ops-enclave-setup">
+                  <ul class="app-sidebar-subnav list-unstyled mb-2">
+                    <li><a class="app-sidebar-sublink {% if 'operations/create-ad-connector/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='create-ad-connector' %}">create-ad-connector</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/create-ad-users/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='create-ad-users' %}">create-ad-users</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/create-ad-group/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='create-ad-group' %}">create-ad-group</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/register-workspace-directory/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='register-workspace-directory' %}">register-workspace-directory</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/enable-ad-connector-mfa/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='enable-ad-connector-mfa' %}">enable-ad-connector-mfa</a></li>
+                  </ul>
+                </div>
+
+                <button type="button" class="app-sidebar-collapse-toggle" data-bs-toggle="collapse" data-bs-target="#ops-image-ami" aria-expanded="false">
+                  Image and AMI
+                </button>
+                <div class="collapse" id="ops-image-ami">
+                  <ul class="app-sidebar-subnav list-unstyled mb-2">
+                    <li><a class="app-sidebar-sublink {% if 'operations/share-ami/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='share-ami' %}">share-ami</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/copy-ami/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='copy-ami' %}">copy-ami</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/create-workspace-image/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='create-workspace-image' %}">create-workspace-image</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/share-image/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='share-image' %}">share-image</a></li>
+                  </ul>
+                </div>
+
+                <button type="button" class="app-sidebar-collapse-toggle" data-bs-toggle="collapse" data-bs-target="#ops-maintenance" aria-expanded="false">
+                  Maintenance / Utilities
+                </button>
+                <div class="collapse" id="ops-maintenance">
+                  <ul class="app-sidebar-subnav list-unstyled mb-0">
+                    <li><a class="app-sidebar-sublink {% if 'operations/create-data-exports/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='create-data-exports' %}">create-data-exports</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/check-ssm-registration/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='check-ssm-registration' %}">check-ssm-registration</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/launch-ec2-instance/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='launch-ec2-instance' %}">launch-ec2-instance</a></li>
+                    <li><a class="app-sidebar-sublink {% if 'operations/apply-playbook-to-node/' in current_path %}is-active{% endif %}" href="{% url 'landing:operation-detail' operation_id='apply-playbook-to-node' %}">apply-playbook-to-node</a></li>
+                  </ul>
+                </div>
+              </section>
+            </nav>
+          </aside>
+        {% endif %}
+
+        <div class="app-shell-main">
+          <div class="app-shell-main-inner">
+            <header class="border-bottom bg-white">
+              <div class="container-fluid py-3 px-3 px-lg-4">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div class="d-flex align-items-center gap-2">
+                    {% if user.is_authenticated %}
+                      <button
+                        class="btn btn-outline-secondary btn-sm d-lg-none"
+                        type="button"
+                        id="sidebar-nav-toggle"
+                        aria-controls="primary-sidebar"
+                        aria-expanded="false"
+                        aria-label="Toggle navigation pane"
+                      >
+                        Nav
+                      </button>
+                    {% endif %}
+                    <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
+                      <div>
+                        <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
+                        <h1 class="h4 mb-0">SRE Operations Console</h1>
+                      </div>
+                      <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
+                    </a>
+                  </div>
+                  <nav class="d-flex align-items-center gap-2" aria-label="Main">
+                    {% if user.is_authenticated %}
+                      {% if quick_operations %}
+                        <div class="dropdown">
+                          <button
+                            class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                            type="button"
+                            id="operations-menu"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            aria-label="Quick operations menu"
+                          >
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="operations-menu">
+                            {% for op in quick_operations %}
+                              <li>
+                                <button
+                                  type="button"
+                                  class="dropdown-item"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#operation-modal-{{ op.id }}"
+                                  data-operation-id="{{ op.id }}"
+                                  data-operation-label="{{ op.label }}"
+                                >
+                                  {{ op.label }}
+                                </button>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </div>
+                      {% endif %}
+                      <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
+                      <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
+                      </form>
+                    {% else %}
+                      <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
+                    {% endif %}
+                  </nav>
+                </div>
+              </div>
+            </header>
+            <main id="main-content" class="app-shell-content py-4">
+              <div class="app-shell-content-inner px-3 px-lg-4">
+                {% block content %}{% endblock content %}
+              </div>
+            </main>
+          </div>
         </div>
       </div>
-    </header>
-    <main id="main-content" class="py-4">
-      <div class="container">
-        {% block content %}{% endblock content %}
-      </div>
-    </main>
+    {% endwith %}
     {% for op in quick_operations %}
       {% if op.id == 'unlock-user' %}
         <div
@@ -127,6 +279,33 @@
       integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"
       crossorigin="anonymous"
     ></script>
+    <script>
+      (function () {
+        var toggle = document.getElementById('sidebar-nav-toggle');
+        var sidebar = document.getElementById('primary-sidebar');
+        if (!toggle || !sidebar) {
+          return;
+        }
+
+        function closeSidebarOnMobile() {
+          if (window.matchMedia('(max-width: 991.98px)').matches) {
+            sidebar.classList.remove('is-open');
+            toggle.setAttribute('aria-expanded', 'false');
+          } else {
+            sidebar.classList.remove('is-open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        }
+
+        toggle.addEventListener('click', function () {
+          var isOpen = sidebar.classList.toggle('is-open');
+          toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        window.addEventListener('resize', closeSidebarOnMobile);
+        closeSidebarOnMobile();
+      })();
+    </script>
     {% block extra_js %}{% endblock extra_js %}
     {% if quick_operations %}
       <script>

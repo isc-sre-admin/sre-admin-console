@@ -2,6 +2,16 @@
 
 Django-based administrative console for AWS Secure Research Enclave (SRE) operational workflows.
 
+## Application shell and navigation
+
+Authenticated pages now use a consistent three-region shell:
+
+- **Left navigation pane** with links for Workflows, Endpoint Management, Plan of Actions and Milestones, and grouped Operations.
+- **Center content pane** where workflow forms, endpoint pages, operation forms, and POAM pages render.
+- **Right contextual pane pattern** for feature-specific side panels, starting with Vulnerability Management on enclave and endpoint detail pages.
+
+On small screens, the left navigation can be expanded/collapsed using the **Nav** button in the header.
+
 ## Landing page
 
 The root route (`/`) provides a workflow-oriented landing page for operations engineers:
@@ -23,6 +33,8 @@ Short-running operations that need minimal input are available from an **Operati
 
 Quick operations are defined by YAML contracts under `backend/proposed-changes/operations/` (e.g. `unlock-user.yaml`). The console loads these and exposes them in the nav; the first supported operation is **Unlock user**.
 
+In addition to quick actions, the left sidebar includes an **Operations** section with grouped operation links that open contract-driven full-page operation forms at `/operations/<operation_id>/`.
+
 ## Endpoint management
 
 The route `/endpoints/` provides enclave drill-down and endpoint management screens:
@@ -35,11 +47,28 @@ The route `/endpoints/` provides enclave drill-down and endpoint management scre
 - **Endpoint detail**: Show Session Manager connect guidance plus contract-driven node actions:
   - `apply-ansible-playbook`
   - `apply-playbook-to-node`
+- **Contextual Vulnerability Management pane**:
+  - Available on enclave detail and endpoint detail pages.
+  - Toggled by a vertical **Vulnerability Management** control on the right edge of the main content.
+  - Persists open/closed preference with local storage keys:
+    - `sreConsole.vulnPaneOpen.enclave`
+    - `sreConsole.vulnPaneOpen.endpoint`
 - **Patch detail**: Stub patching summary screen for each endpoint (`/patching/`) with Patch Manager status and most recent patch timestamp when available.
 - **Provisioning links**: Endpoint detail includes quick links to start the provision Linux/Windows WorkSpace and EC2 pipelines with `?enclave=<destination_account_id>` prefilled.
 
 Endpoint inventory data is requested via the proposed `list-endpoints` query contract. If the backend query is not implemented yet, the page shows sample rows so the UI remains usable for prototyping.
 Vulnerability data is requested via the proposed `list-vulnerabilities` query contract and currently uses mock data in local development.
+
+## Plan of Actions and Milestones (POAM)
+
+The route `/poam/` provides a POAM management surface:
+
+- **POAM list view** with Open/Closed/All filters and a table of entries.
+- **Add/Edit POAM entry** form at `/poam/new/` and `/poam/<poam_id>/<status>/`.
+- Form sections are organized into Identification, Context, Timeline, and Details.
+- Submission invokes the existing `create-poam-entry` operation contract payload shape (`operation`, `mode`, `poam_id`, `status`, and optional fields).
+
+Until a dedicated POAM list query exists in the backend, the list view is backed by sample/session data for prototyping.
 
 ## Start pipeline execution
 
