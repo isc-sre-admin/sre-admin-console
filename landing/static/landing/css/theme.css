@@ -14,7 +14,19 @@ body.app-shell {
 
 .app-shell-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+.app-shell-header {
+  flex-shrink: 0;
+}
+
+.app-shell-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-shell-sidebar {
@@ -22,12 +34,19 @@ body.app-shell {
   border-right: 1px solid var(--sre-border);
   width: 272px;
   flex-shrink: 0;
-  display: none;
+  display: block;
   overflow-y: auto;
 }
 
-.app-shell-sidebar.is-open {
-  display: block;
+/* On small screens: hide sidebar by default, show when Nav is toggled */
+@media (max-width: 991.98px) {
+  .app-shell-sidebar {
+    display: none;
+  }
+
+  .app-shell-sidebar.is-open {
+    display: block;
+  }
 }
 
 .app-sidebar-nav {
@@ -105,12 +124,9 @@ body.app-shell {
 .app-shell-main {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.app-shell-main-inner {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .app-shell-content {

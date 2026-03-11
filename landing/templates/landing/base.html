@@ -17,6 +17,77 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     {% with current_view=request.resolver_match.view_name|default:"" current_path=request.path|default:"" %}
       <div class="app-shell-layout">
+        <header class="app-shell-header border-bottom bg-white">
+          <div class="container-fluid py-3 px-3 px-lg-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                {% if user.is_authenticated %}
+                  <button
+                    class="btn btn-outline-secondary btn-sm d-lg-none"
+                    type="button"
+                    id="sidebar-nav-toggle"
+                    aria-controls="primary-sidebar"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation pane"
+                  >
+                    Nav
+                  </button>
+                {% endif %}
+                <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
+                  <div>
+                    <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
+                    <h1 class="h4 mb-0">SRE Operations Console</h1>
+                  </div>
+                  <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
+                </a>
+              </div>
+              <nav class="d-flex align-items-center gap-2" aria-label="Main">
+                {% if user.is_authenticated %}
+                  {% if quick_operations %}
+                    <div class="dropdown">
+                      <button
+                        class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                        type="button"
+                        id="operations-menu"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-haspopup="true"
+                        aria-label="Quick operations menu"
+                      >
+                        Actions
+                      </button>
+                      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="operations-menu">
+                        {% for op in quick_operations %}
+                          <li>
+                            <button
+                              type="button"
+                              class="dropdown-item"
+                              data-bs-toggle="modal"
+                              data-bs-target="#operation-modal-{{ op.id }}"
+                              data-operation-id="{{ op.id }}"
+                              data-operation-label="{{ op.label }}"
+                            >
+                              {{ op.label }}
+                            </button>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  {% endif %}
+                  <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
+                  <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
+                  </form>
+                {% else %}
+                  <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
+                {% endif %}
+              </nav>
+            </div>
+          </div>
+        </header>
+
+        <div class="app-shell-body">
         {% if user.is_authenticated %}
           <aside class="app-shell-sidebar" id="primary-sidebar">
             <nav aria-label="Primary" class="app-sidebar-nav">
@@ -149,82 +220,12 @@
         {% endif %}
 
         <div class="app-shell-main">
-          <div class="app-shell-main-inner">
-            <header class="border-bottom bg-white">
-              <div class="container-fluid py-3 px-3 px-lg-4">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                  <div class="d-flex align-items-center gap-2">
-                    {% if user.is_authenticated %}
-                      <button
-                        class="btn btn-outline-secondary btn-sm d-lg-none"
-                        type="button"
-                        id="sidebar-nav-toggle"
-                        aria-controls="primary-sidebar"
-                        aria-expanded="false"
-                        aria-label="Toggle navigation pane"
-                      >
-                        Nav
-                      </button>
-                    {% endif %}
-                    <a href="{% url 'landing:home' %}" class="header-home-link d-flex align-items-center text-decoration-none text-dark">
-                      <div>
-                        <p class="text-uppercase text-secondary small fw-semibold mb-1">AWS Secure Research Enclave</p>
-                        <h1 class="h4 mb-0">SRE Operations Console</h1>
-                      </div>
-                      <span class="badge rounded-pill text-bg-light ms-2">Prototype</span>
-                    </a>
-                  </div>
-                  <nav class="d-flex align-items-center gap-2" aria-label="Main">
-                    {% if user.is_authenticated %}
-                      {% if quick_operations %}
-                        <div class="dropdown">
-                          <button
-                            class="btn btn-outline-secondary btn-sm dropdown-toggle"
-                            type="button"
-                            id="operations-menu"
-                            data-bs-toggle="dropdown"
-                            aria-expanded="false"
-                            aria-haspopup="true"
-                            aria-label="Quick operations menu"
-                          >
-                            Actions
-                          </button>
-                          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="operations-menu">
-                            {% for op in quick_operations %}
-                              <li>
-                                <button
-                                  type="button"
-                                  class="dropdown-item"
-                                  data-bs-toggle="modal"
-                                  data-bs-target="#operation-modal-{{ op.id }}"
-                                  data-operation-id="{{ op.id }}"
-                                  data-operation-label="{{ op.label }}"
-                                >
-                                  {{ op.label }}
-                                </button>
-                              </li>
-                            {% endfor %}
-                          </ul>
-                        </div>
-                      {% endif %}
-                      <span class="text-secondary small" aria-label="Signed in as">{{ user.get_username }}</span>
-                      <form method="post" action="{% url 'logout' %}" class="d-inline" aria-label="Sign out">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
-                      </form>
-                    {% else %}
-                      <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Sign in</a>
-                    {% endif %}
-                  </nav>
-                </div>
-              </div>
-            </header>
-            <main id="main-content" class="app-shell-content py-4">
-              <div class="app-shell-content-inner px-3 px-lg-4">
-                {% block content %}{% endblock content %}
-              </div>
-            </main>
-          </div>
+          <main id="main-content" class="app-shell-content py-4">
+            <div class="app-shell-content-inner px-3 px-lg-4">
+              {% block content %}{% endblock content %}
+            </div>
+          </main>
+        </div>
         </div>
       </div>
     {% endwith %}
