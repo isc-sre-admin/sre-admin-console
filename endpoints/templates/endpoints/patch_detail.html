@@ -25,7 +25,7 @@
     <p class="section-eyebrow mb-1">Patching detail</p>
     <h2 class="mb-1">{{ endpoint.name|default:endpoint.resource_id }}</h2>
     <p class="text-secondary mb-0">
-      {{ endpoint.resource_type|upper }} · {{ endpoint.resource_id }} · {{ endpoint.region }}
+      {{ endpoint.resource_type|upper }} · {{ endpoint.resource_id }} · {{ endpoint.region }} · Enclave {{ enclave.destination_account_id }}
     </p>
   </section>
 
@@ -99,7 +99,7 @@
     <div class="card-body">
       <h3 class="h5 mb-2">Patching history</h3>
       <p class="text-secondary mb-0">
-        Detailed patching history and operation logs will appear here when backend support is added.
+        Patching history and details will appear here when available.
       </p>
     </div>
   </section>

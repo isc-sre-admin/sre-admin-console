@@ -1,4 +1,4 @@
-"""Tests for feature 008 endpoints app."""
+"""Tests for feature 009 endpoints app."""
 
 import json
 
@@ -35,7 +35,66 @@ def test_enclave_detail_renders_endpoint_table(authenticated_client) -> None:
     page = response.content.decode()
     assert "analytics-node-1111" in page
     assert "research-workspace-1111" in page
-    assert "Manage endpoint" in page
+    assert "Last Patched" in page
+    assert "Vulnerabilities" in page
+    assert "Not yet patched" in page
+    assert "Not Managed" in page
+    assert reverse(
+        "endpoints:endpoint-detail",
+        kwargs={
+            "enclave_id": "111111111111",
+            "resource_type": "ec2",
+            "resource_id": "i-0a1b2c3d4e5f1111",
+        },
+    ) in page
+    assert reverse(
+        "endpoints:patch-detail",
+        kwargs={
+            "enclave_id": "111111111111",
+            "resource_type": "ec2",
+            "resource_id": "i-0a1b2c3d4e5f1111",
+        },
+    ) in page
+
+
+@pytest.mark.django_db
+def test_patch_detail_renders_endpoint_patching_summary(authenticated_client) -> None:
+    response = authenticated_client.get(
+        reverse(
+            "endpoints:patch-detail",
+            kwargs={
+                "enclave_id": "111111111111",
+                "resource_type": "ec2",
+                "resource_id": "i-0a1b2c3d4e5f1111",
+            },
+        )
+    )
+    assert response.status_code == 200
+    page = response.content.decode()
+    assert "Endpoint patching summary" in page
+    assert "Patch Manager status" in page
+    assert "Patching history and details will appear here when available." in page
+
+
+@pytest.mark.django_db
+def test_enclave_vulnerabilities_returns_filtered_results(authenticated_client) -> None:
+    response = authenticated_client.get(
+        reverse("endpoints:enclave-vulnerabilities", kwargs={"enclave_id": "111111111111"}),
+        data={
+            "region": "us-east-1",
+            "category": "actionable",
+            "resource_id": "i-0a1b2c3d4e5f1111",
+            "filters": json.dumps({"fix_available": {"type": "boolean", "value": "yes"}}),
+        },
+    )
+    assert response.status_code == 200
+    payload = json.loads(response.content)
+    assert payload.get("using_backend_data") is True
+    vulnerabilities = payload.get("vulnerabilities") or []
+    assert len(vulnerabilities) == 1
+    first = vulnerabilities[0]
+    assert first.get("category") == "actionable"
+    assert first.get("resource_id") == "i-0a1b2c3d4e5f1111"
 
 
 @pytest.mark.django_db

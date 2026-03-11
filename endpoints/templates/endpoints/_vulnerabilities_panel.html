@@ -12,8 +12,13 @@
           id="vuln-filter-button"
           data-bs-toggle="modal"
           data-bs-target="#vuln-filter-modal"
+          aria-label="Open vulnerability filters"
+          title="Filter vulnerabilities"
         >
-          Filter
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .39.812L10 7.313V13.5a.5.5 0 0 1-.757.429l-2-1.2A.5.5 0 0 1 7 12.3V7.313L1.61 1.812A.5.5 0 0 1 1.5 1.5"/>
+          </svg>
+          <span class="visually-hidden">Filter</span>
         </button>
         <button
           type="button"
@@ -21,20 +26,27 @@
           id="vuln-settings-button"
           data-bs-toggle="modal"
           data-bs-target="#vuln-settings-modal"
+          aria-label="Open vulnerability column settings"
+          title="Column settings"
         >
-          Settings
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M9.405 1.05a1 1 0 0 0-.81 0l-.771.343a1 1 0 0 1-.938-.049l-.738-.456a1 1 0 0 0-1.257.145l-.622.622a1 1 0 0 0-.145 1.257l.456.738a1 1 0 0 1 .049.938l-.343.771a1 1 0 0 0 0 .81l.343.771a1 1 0 0 1-.049.938l-.456.738a1 1 0 0 0 .145 1.257l.622.622a1 1 0 0 0 1.257.145l.738-.456a1 1 0 0 1 .938-.049l.771.343a1 1 0 0 0 .81 0l.771-.343a1 1 0 0 1 .938.049l.738.456a1 1 0 0 0 1.257-.145l.622-.622a1 1 0 0 0 .145-1.257l-.456-.738a1 1 0 0 1-.049-.938l.343-.771a1 1 0 0 0 0-.81l-.343-.771a1 1 0 0 1 .049-.938l.456-.738a1 1 0 0 0-.145-1.257l-.622-.622a1 1 0 0 0-1.257-.145l-.738.456a1 1 0 0 1-.938.049zM8 10.5A2.5 2.5 0 1 1 8 5a2.5 2.5 0 0 1 0 5.5"/>
+          </svg>
+          <span class="visually-hidden">Settings</span>
         </button>
       </div>
     </div>
 
-    <p id="vuln-active-filters-summary" class="text-secondary small mb-2">
-      Showing all vulnerabilities.
-    </p>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <p id="vuln-active-filters-summary" class="text-secondary small mb-0">
+        Showing all vulnerabilities.
+      </p>
+      <span id="vuln-endpoint-filter-badge" class="badge text-bg-primary d-none"></span>
+    </div>
 
     <div
       id="vuln-table-container"
-      class="table-responsive mb-3"
-      style="max-height: 420px; overflow-y: auto;"
+      class="table-responsive vuln-table-scroll mb-3"
       data-enclave-id="{{ enclave.destination_account_id }}"
       data-region="{{ region }}"
       data-vuln-url="{% url 'endpoints:enclave-vulnerabilities' enclave_id=enclave.destination_account_id %}?region={{ region }}"
@@ -106,7 +118,7 @@
       </div>
       <div class="modal-body">
         <p class="text-secondary small mb-3">
-          Filters are applied client-side. Leave a field blank to ignore that column.
+          Filters are applied in the current tab. Use text match, numeric ranges, and Any/Yes/No flags as needed.
         </p>
         <form id="vuln-filter-form" novalidate>
           <div class="row g-3" id="vuln-filter-fields">
@@ -139,6 +151,7 @@
         <p class="text-secondary small mb-3">
           Choose which columns are visible in the vulnerabilities table.
         </p>
+        <p id="vuln-settings-error" class="text-danger small d-none mb-3" role="alert"></p>
         <form id="vuln-settings-form" novalidate>
           <div class="row row-cols-1 row-cols-md-2 g-2" id="vuln-settings-fields">
             <!-- Populated by JavaScript -->

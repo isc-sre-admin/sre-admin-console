@@ -112,12 +112,16 @@
       var headerRow = document.getElementById('vuln-table-header-row');
       var body = document.getElementById('vuln-table-body');
       var filtersSummary = document.getElementById('vuln-active-filters-summary');
+      var endpointFilterBadge = document.getElementById('vuln-endpoint-filter-badge');
       var filterForm = document.getElementById('vuln-filter-form');
       var filterFields = document.getElementById('vuln-filter-fields');
       var filterClearBtn = document.getElementById('vuln-filter-clear');
+      var filterModal = document.getElementById('vuln-filter-modal');
       var settingsForm = document.getElementById('vuln-settings-form');
       var settingsFields = document.getElementById('vuln-settings-fields');
       var settingsRestoreBtn = document.getElementById('vuln-settings-restore');
+      var settingsError = document.getElementById('vuln-settings-error');
+      var settingsModal = document.getElementById('vuln-settings-modal');
       var tabButtons = document.querySelectorAll('#vuln-tablist [data-vuln-tab]');
       var endpointRows = document.querySelectorAll('.endpoint-row');
       var dataUrlBase = tableContainer.getAttribute('data-vuln-url');
@@ -126,25 +130,29 @@
       var STORAGE_KEY_FILTERS = 'sreConsole.vulnerabilityFilters';
 
       var ALL_COLUMNS = [
-        { key: 'assessed_criticality', label: 'Assessed Criticality' },
-        { key: 'status', label: 'Status' },
-        { key: 'days_open', label: 'Days Open' },
-        { key: 'days_actionable', label: 'Days Actionable' },
-        { key: 'account_id', label: 'Account ID' },
-        { key: 'finding_type', label: 'Type' },
-        { key: 'package_name', label: 'Package Name' },
-        { key: 'installed_version', label: 'Installed Version' },
-        { key: 'fixed_version', label: 'Fixed Version' },
-        { key: 'vulnerability_id', label: 'Vulnerability ID' },
-        { key: 'vulnerability_source', label: 'Vulnerability Source' },
-        { key: 'vulnerability_reported_at', label: 'Vulnerability Reported' },
-        { key: 'fix_available', label: 'Fix Available' },
-        { key: 'exploit_available', label: 'Exploit Available' },
-        { key: 'resource_type', label: 'Resource Type' },
-        { key: 'resource_id', label: 'Resource ID' },
-        { key: 'tag_name', label: 'Tag Name' },
-        { key: 'comments', label: 'Comments' }
+        { key: 'assessed_criticality', label: 'Assessed Criticality', type: 'text' },
+        { key: 'status', label: 'Status', type: 'text' },
+        { key: 'days_open', label: 'Days Open', type: 'number' },
+        { key: 'days_actionable', label: 'Days Actionable', type: 'number' },
+        { key: 'account_id', label: 'Account ID', type: 'text' },
+        { key: 'finding_type', label: 'Type', type: 'text' },
+        { key: 'package_name', label: 'Package Name', type: 'text' },
+        { key: 'installed_version', label: 'Installed Version', type: 'text' },
+        { key: 'fixed_version', label: 'Fixed Version', type: 'text' },
+        { key: 'vulnerability_id', label: 'Vulnerability ID', type: 'text' },
+        { key: 'vulnerability_source', label: 'Vulnerability Source', type: 'text' },
+        { key: 'vulnerability_reported_at', label: 'Vulnerability Reported', type: 'text' },
+        { key: 'fix_available', label: 'Fix Available', type: 'boolean' },
+        { key: 'exploit_available', label: 'Exploit Available', type: 'boolean' },
+        { key: 'resource_type', label: 'Resource Type', type: 'text' },
+        { key: 'resource_id', label: 'Resource ID', type: 'text' },
+        { key: 'tag_name', label: 'Tag Name', type: 'text' },
+        { key: 'comments', label: 'Comments', type: 'text' }
       ];
+      var COLUMN_INDEX = {};
+      ALL_COLUMNS.forEach(function (column) {
+        COLUMN_INDEX[column.key] = column;
+      });
 
       var DEFAULT_VISIBLE = {
         assessed_criticality: true,
@@ -153,12 +161,129 @@
         vulnerability_id: true
       };
 
+      function cloneDefaultFilterState() {
+        return {
+          tab: 'actionable',
+          resource_id: null,
+          columns: {}
+        };
+      }
+
+      function normalizeBooleanValue(raw) {
+        var normalized = String(raw == null ? '' : raw).trim().toLowerCase();
+        if (normalized === 'yes' || normalized === 'true' || normalized === '1') {
+          return 'yes';
+        }
+        if (normalized === 'no' || normalized === 'false' || normalized === '0') {
+          return 'no';
+        }
+        return 'any';
+      }
+
+      function sanitizeNumberString(raw) {
+        var value = String(raw == null ? '' : raw).trim();
+        if (!value) {
+          return '';
+        }
+        return Number.isFinite(Number(value)) ? value : '';
+      }
+
+      function sanitizeColumnVisibility(rawValue) {
+        if (!rawValue || typeof rawValue !== 'object') {
+          return {};
+        }
+        var cleaned = {};
+        ALL_COLUMNS.forEach(function (col) {
+          if (Object.prototype.hasOwnProperty.call(rawValue, col.key)) {
+            cleaned[col.key] = !!rawValue[col.key];
+          }
+        });
+        return cleaned;
+      }
+
+      function sanitizeCriterionForColumn(column, rawCriterion) {
+        if (!column) {
+          return null;
+        }
+
+        if (column.type === 'text') {
+          var textValue = '';
+          if (typeof rawCriterion === 'string') {
+            textValue = rawCriterion;
+          } else if (rawCriterion && typeof rawCriterion === 'object' && typeof rawCriterion.value === 'string') {
+            textValue = rawCriterion.value;
+          }
+          textValue = textValue.trim();
+          if (!textValue) {
+            return null;
+          }
+          return { type: 'text', value: textValue };
+        }
+
+        if (column.type === 'number') {
+          var minValue = '';
+          var maxValue = '';
+          if (rawCriterion && typeof rawCriterion === 'object') {
+            minValue = sanitizeNumberString(rawCriterion.min);
+            maxValue = sanitizeNumberString(rawCriterion.max);
+          } else if (typeof rawCriterion === 'string') {
+            minValue = sanitizeNumberString(rawCriterion);
+          }
+          if (!minValue && !maxValue) {
+            return null;
+          }
+          return { type: 'number', min: minValue, max: maxValue };
+        }
+
+        if (column.type === 'boolean') {
+          var booleanValue = 'any';
+          if (rawCriterion && typeof rawCriterion === 'object') {
+            booleanValue = normalizeBooleanValue(rawCriterion.value);
+          } else if (typeof rawCriterion === 'string') {
+            booleanValue = normalizeBooleanValue(rawCriterion);
+          }
+          if (booleanValue === 'any') {
+            return null;
+          }
+          return { type: 'boolean', value: booleanValue };
+        }
+
+        return null;
+      }
+
+      function sanitizeFilters(rawValue) {
+        var cleaned = cloneDefaultFilterState();
+        if (!rawValue || typeof rawValue !== 'object') {
+          return cleaned;
+        }
+
+        var tab = String(rawValue.tab || 'actionable').trim().toLowerCase();
+        if (tab !== 'actionable' && tab !== 'planned' && tab !== 'informational') {
+          tab = 'actionable';
+        }
+        cleaned.tab = tab;
+
+        var resourceId = String(rawValue.resource_id || '').trim();
+        cleaned.resource_id = resourceId || null;
+
+        var rawColumns = rawValue.columns;
+        if (rawColumns && typeof rawColumns === 'object') {
+          Object.keys(rawColumns).forEach(function (key) {
+            var column = COLUMN_INDEX[key];
+            var cleanedCriterion = sanitizeCriterionForColumn(column, rawColumns[key]);
+            if (cleanedCriterion) {
+              cleaned.columns[key] = cleanedCriterion;
+            }
+          });
+        }
+        return cleaned;
+      }
+
       function loadColumnVisibility() {
         try {
           var raw = window.localStorage.getItem(STORAGE_KEY_COLUMNS);
           if (!raw) return {};
-          var parsed = JSON.parse(raw);
-          return parsed && typeof parsed === 'object' ? parsed : {};
+          return sanitizeColumnVisibility(JSON.parse(raw));
         } catch (e) {
           return {};
         }
@@ -173,23 +298,11 @@
       }
 
       function loadFilterState() {
-        var initial = {
-          tab: 'actionable',
-          resource_id: null,
-          columns: {}
-        };
+        var initial = cloneDefaultFilterState();
         try {
           var raw = window.localStorage.getItem(STORAGE_KEY_FILTERS);
           if (!raw) return initial;
-          var parsed = JSON.parse(raw);
-          if (!parsed || typeof parsed !== 'object') return initial;
-          if (!parsed.columns || typeof parsed.columns !== 'object') {
-            parsed.columns = {};
-          }
-          if (!parsed.tab) {
-            parsed.tab = 'actionable';
-          }
-          return parsed;
+          return sanitizeFilters(JSON.parse(raw));
         } catch (e) {
           return initial;
         }
@@ -224,11 +337,22 @@
         return false;
       }
 
+      function getVisibleColumns() {
+        var visibleColumns = ALL_COLUMNS.filter(function (col) {
+          return isColumnVisible(col.key);
+        });
+        if (visibleColumns.length > 0) {
+          return visibleColumns;
+        }
+        return ALL_COLUMNS.filter(function (col) {
+          return !!DEFAULT_VISIBLE[col.key];
+        });
+      }
+
       function buildHeader() {
         if (!headerRow) return;
         headerRow.innerHTML = '';
-        ALL_COLUMNS.forEach(function (col) {
-          if (!isColumnVisible(col.key)) return;
+        getVisibleColumns().forEach(function (col) {
           var th = document.createElement('th');
           th.scope = 'col';
           th.textContent = col.label;
@@ -241,9 +365,9 @@
           return '';
         }
         if (key === 'fix_available' || key === 'exploit_available') {
-          var truthy = String(value).trim().toLowerCase();
-          if (!truthy) return '';
-          return truthy === 'true' || truthy === 'yes' || truthy === '1' ? 'Yes' : 'No';
+          var boolValue = normalizeBooleanValue(value);
+          if (boolValue === 'any') return '';
+          return boolValue === 'yes' ? 'Yes' : 'No';
         }
         return String(value);
       }
@@ -257,12 +381,45 @@
         var columnFilters = filterState.columns || {};
         for (var key in columnFilters) {
           if (!Object.prototype.hasOwnProperty.call(columnFilters, key)) continue;
-          var term = String(columnFilters[key] || '').trim().toLowerCase();
-          if (!term) continue;
-          var rawValue = item[key];
-          var text = String(rawValue == null ? '' : rawValue).toLowerCase();
-          if (text.indexOf(term) === -1) {
-            return false;
+          var criterion = columnFilters[key];
+          var column = COLUMN_INDEX[key];
+          if (!criterion || !column) continue;
+
+          if (column.type === 'text') {
+            var term = String(criterion.value || '').trim().toLowerCase();
+            if (!term) continue;
+            var rawValue = item[key];
+            var text = String(rawValue == null ? '' : rawValue).toLowerCase();
+            if (text.indexOf(term) === -1) {
+              return false;
+            }
+            continue;
+          }
+
+          if (column.type === 'number') {
+            var rawNumeric = item[key];
+            var numericValue = Number(rawNumeric);
+            var minValue = criterion.min === '' ? null : Number(criterion.min);
+            var maxValue = criterion.max === '' ? null : Number(criterion.max);
+            if ((minValue !== null || maxValue !== null) && !Number.isFinite(numericValue)) {
+              return false;
+            }
+            if (minValue !== null && numericValue < minValue) {
+              return false;
+            }
+            if (maxValue !== null && numericValue > maxValue) {
+              return false;
+            }
+            continue;
+          }
+
+          if (column.type === 'boolean') {
+            var expected = normalizeBooleanValue(criterion.value);
+            if (expected === 'any') continue;
+            var actual = normalizeBooleanValue(item[key]);
+            if (expected !== actual) {
+              return false;
+            }
           }
         }
         return true;
@@ -272,17 +429,36 @@
         if (!body) return;
         body.innerHTML = '';
         buildHeader();
+        var visibleColumns = getVisibleColumns();
+        var renderedRows = 0;
         currentData.forEach(function (item) {
           if (!matchesFilters(item)) return;
           var tr = document.createElement('tr');
-          ALL_COLUMNS.forEach(function (col) {
-            if (!isColumnVisible(col.key)) return;
+          visibleColumns.forEach(function (col) {
             var td = document.createElement('td');
             td.textContent = formatValue(col.key, item[col.key]);
             tr.appendChild(td);
           });
           body.appendChild(tr);
+          renderedRows += 1;
         });
+        if (renderedRows === 0) {
+          var emptyRow = document.createElement('tr');
+          var emptyCell = document.createElement('td');
+          emptyCell.colSpan = visibleColumns.length || 1;
+          emptyCell.className = 'text-secondary';
+          emptyCell.textContent = 'No vulnerabilities match the current filters.';
+          emptyRow.appendChild(emptyCell);
+          body.appendChild(emptyRow);
+        }
+      }
+
+      function buildBackendFilters() {
+        var criteria = {};
+        Object.keys(filterState.columns || {}).forEach(function (key) {
+          criteria[key] = filterState.columns[key];
+        });
+        return criteria;
       }
 
       function buildDataUrl() {
@@ -294,9 +470,10 @@
         if (filterState.resource_id) {
           params.push('resource_id=' + encodeURIComponent(filterState.resource_id));
         }
-        if (filterState.columns && Object.keys(filterState.columns).length > 0) {
+        var backendFilters = buildBackendFilters();
+        if (Object.keys(backendFilters).length > 0) {
           try {
-            params.push('filters=' + encodeURIComponent(JSON.stringify(filterState.columns)));
+            params.push('filters=' + encodeURIComponent(JSON.stringify(backendFilters)));
           } catch (e) {
             // ignore
           }
@@ -311,7 +488,7 @@
         if (!filtersSummary) return;
         var parts = [];
         if (filterState.resource_id) {
-          parts.push('Filtered by endpoint ' + filterState.resource_id);
+          parts.push('Endpoint filter active');
         }
         if (filterState.columns && Object.keys(filterState.columns).length > 0) {
           parts.push('Column filters applied');
@@ -320,6 +497,15 @@
           filtersSummary.textContent = 'Showing all vulnerabilities.';
         } else {
           filtersSummary.textContent = parts.join(' · ');
+        }
+        if (endpointFilterBadge) {
+          if (filterState.resource_id) {
+            endpointFilterBadge.textContent = filterState.resource_id;
+            endpointFilterBadge.classList.remove('d-none');
+          } else {
+            endpointFilterBadge.textContent = '';
+            endpointFilterBadge.classList.add('d-none');
+          }
         }
       }
 
@@ -355,9 +541,13 @@
           });
       }
 
-      function initSettingsModal() {
+      function renderSettingsFields() {
         if (!settingsFields || !settingsForm) return;
         settingsFields.innerHTML = '';
+        if (settingsError) {
+          settingsError.classList.add('d-none');
+          settingsError.textContent = '';
+        }
         ALL_COLUMNS.forEach(function (col) {
           var wrapper = document.createElement('div');
           wrapper.className = 'col';
@@ -378,7 +568,10 @@
           wrapper.appendChild(div);
           settingsFields.appendChild(wrapper);
         });
+      }
 
+      function initSettingsModal() {
+        renderSettingsFields();
         settingsForm.addEventListener('submit', function (ev) {
           ev.preventDefault();
           var newVisibility = {};
@@ -391,7 +584,10 @@
             if (checked) anyChecked = true;
           });
           if (!anyChecked) {
-            // Require at least one column
+            if (settingsError) {
+              settingsError.textContent = 'Select at least one visible column.';
+              settingsError.classList.remove('d-none');
+            }
             return;
           }
           columnVisibility = newVisibility;
@@ -408,50 +604,127 @@
           settingsRestoreBtn.addEventListener('click', function () {
             columnVisibility = {};
             saveColumnVisibility(columnVisibility);
-            // Reset checkboxes to defaults
-            ALL_COLUMNS.forEach(function (col) {
-              var checkbox = settingsForm.querySelector('input[name="column-' + col.key + '"]');
-              if (!checkbox) return;
-              checkbox.checked = isColumnVisible(col.key);
-            });
+            renderSettingsFields();
             renderTable();
+          });
+        }
+
+        if (settingsModal) {
+          settingsModal.addEventListener('show.bs.modal', function () {
+            renderSettingsFields();
           });
         }
       }
 
-      function initFilterModal() {
+      function renderFilterFields() {
         if (!filterFields || !filterForm) return;
         filterFields.innerHTML = '';
         ALL_COLUMNS.forEach(function (col) {
           var wrapper = document.createElement('div');
-          wrapper.className = 'col-12 col-md-6';
+          wrapper.className = 'col-12';
           var label = document.createElement('label');
           label.className = 'form-label';
           label.htmlFor = 'vuln-filter-' + col.key;
           label.textContent = col.label;
-          var input = document.createElement('input');
-          input.type = 'text';
-          input.className = 'form-control';
-          input.id = 'vuln-filter-' + col.key;
-          input.name = 'filter-' + col.key;
-          var current = filterState.columns && filterState.columns[col.key];
-          if (current) {
-            input.value = current;
+          var current = filterState.columns && filterState.columns[col.key] ? filterState.columns[col.key] : null;
+          var input;
+          if (col.type === 'number') {
+            var rangeRow = document.createElement('div');
+            rangeRow.className = 'row g-2';
+            var minCol = document.createElement('div');
+            minCol.className = 'col-6';
+            var maxCol = document.createElement('div');
+            maxCol.className = 'col-6';
+            var minInput = document.createElement('input');
+            minInput.type = 'number';
+            minInput.step = '1';
+            minInput.className = 'form-control';
+            minInput.id = 'vuln-filter-' + col.key + '-min';
+            minInput.name = 'filter-' + col.key + '-min';
+            minInput.placeholder = 'Min';
+            if (current && current.min) {
+              minInput.value = current.min;
+            }
+            var maxInput = document.createElement('input');
+            maxInput.type = 'number';
+            maxInput.step = '1';
+            maxInput.className = 'form-control';
+            maxInput.id = 'vuln-filter-' + col.key + '-max';
+            maxInput.name = 'filter-' + col.key + '-max';
+            maxInput.placeholder = 'Max';
+            if (current && current.max) {
+              maxInput.value = current.max;
+            }
+            minCol.appendChild(minInput);
+            maxCol.appendChild(maxInput);
+            rangeRow.appendChild(minCol);
+            rangeRow.appendChild(maxCol);
+            wrapper.appendChild(label);
+            wrapper.appendChild(rangeRow);
+            filterFields.appendChild(wrapper);
+            return;
+          }
+
+          if (col.type === 'boolean') {
+            input = document.createElement('select');
+            input.className = 'form-select';
+            input.id = 'vuln-filter-' + col.key;
+            input.name = 'filter-' + col.key;
+            [
+              { value: 'any', label: 'Any' },
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' }
+            ].forEach(function (optionDef) {
+              var option = document.createElement('option');
+              option.value = optionDef.value;
+              option.textContent = optionDef.label;
+              input.appendChild(option);
+            });
+            input.value = current && current.value ? normalizeBooleanValue(current.value) : 'any';
+          } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.id = 'vuln-filter-' + col.key;
+            input.name = 'filter-' + col.key;
+            if (current && current.value) {
+              input.value = current.value;
+            }
           }
           wrapper.appendChild(label);
           wrapper.appendChild(input);
           filterFields.appendChild(wrapper);
         });
+      }
 
+      function initFilterModal() {
+        renderFilterFields();
         filterForm.addEventListener('submit', function (ev) {
           ev.preventDefault();
           var newColumns = {};
           ALL_COLUMNS.forEach(function (col) {
+            if (col.type === 'number') {
+              var minInput = filterForm.querySelector('input[name="filter-' + col.key + '-min"]');
+              var maxInput = filterForm.querySelector('input[name="filter-' + col.key + '-max"]');
+              var minValue = sanitizeNumberString(minInput ? minInput.value : '');
+              var maxValue = sanitizeNumberString(maxInput ? maxInput.value : '');
+              if (minValue || maxValue) {
+                newColumns[col.key] = { type: 'number', min: minValue, max: maxValue };
+              }
+              return;
+            }
+            if (col.type === 'boolean') {
+              var boolInput = filterForm.querySelector('select[name="filter-' + col.key + '"]');
+              var boolValue = normalizeBooleanValue(boolInput ? boolInput.value : 'any');
+              if (boolValue !== 'any') {
+                newColumns[col.key] = { type: 'boolean', value: boolValue };
+              }
+              return;
+            }
             var input = filterForm.querySelector('input[name="filter-' + col.key + '"]');
-            if (!input) return;
-            var value = String(input.value || '').trim();
+            var value = String(input ? input.value : '').trim();
             if (value) {
-              newColumns[col.key] = value;
+              newColumns[col.key] = { type: 'text', value: value };
             }
           });
           filterState.columns = newColumns;
@@ -469,13 +742,15 @@
             filterState.columns = {};
             filterState.resource_id = null;
             saveFilterState();
-            // Clear inputs
-            var inputs = filterForm.querySelectorAll('input[name^="filter-"]');
-            inputs.forEach(function (input) {
-              input.value = '';
-            });
+            renderFilterFields();
             clearEndpointSelection();
             fetchAndRender();
+          });
+        }
+
+        if (filterModal) {
+          filterModal.addEventListener('show.bs.modal', function () {
+            renderFilterFields();
           });
         }
       }
