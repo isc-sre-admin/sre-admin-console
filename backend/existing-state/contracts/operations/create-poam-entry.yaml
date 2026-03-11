@@ -1,0 +1,68 @@
+# Contract: create-poam-entry operation
+id: create-poam-entry
+label: Create POAM Entry
+function: Create or update a POAM (Plan of Action and Milestones) entry in a DynamoDB table (partition key poam_id, sort key status).
+modes:
+  verify: Checks that an item exists for the given poam_id and status; returns verified.
+  modify: Puts the item (create or overwrite); idempotent.
+
+invocation:
+  target: SreManagementFunction
+  description: Invoke the SRE management Lambda synchronously; payload includes operation and inputs below.
+  method: lambda.invoke
+  invocation_type: RequestResponse
+  payload:
+    required:
+      operation: create-poam-entry
+      mode: verify | modify
+      poam_id: string
+      status: open | closed
+    optional:
+      source: string
+      enclave_ids: list of string
+      enclave_names: list of string
+      vulnerability_ids: list of string
+      observation: string
+      plan: string
+      owner: string
+      create_date: string
+      due_date: string
+      completion_date: string
+      comments: string
+      sequence_number: string or number
+      resource_ids: list of string
+  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+  response:
+    success: object with status, verified (verify mode) or status, poam_id, entry_status (modify mode)
+    error: object with status, error, message
+
+inputs:
+  required:
+    - operation
+    - mode
+    - poam_id
+    - status
+  optional:
+    - source
+    - enclave_ids
+    - enclave_names
+    - vulnerability_ids
+    - observation
+    - plan
+    - owner
+    - create_date
+    - due_date
+    - completion_date
+    - comments
+    - sequence_number
+    - resource_ids
+outputs:
+  success:
+    - status
+    - verified
+    - poam_id
+    - entry_status
+  error:
+    - status
+    - error
+    - message

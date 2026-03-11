@@ -1,8 +1,12 @@
-# Contract: unlock-user operation (proposed)
-# Unlock an AD/WorkSpaces user account so they can sign in again.
+# Contract: unlock-user operation
+# Unlock an AD user account so they can sign in again.
 id: unlock-user
 label: Unlock User
 function: Unlock a user account in the directory so the user can sign in.
+
+modes:
+  verify: Check whether the specified user account exists and is currently locked out (no changes).
+  modify: If the user exists and is locked out, unlock the account idempotently (safe when already unlocked).
 
 invocation:
   target: SreManagementFunction
@@ -12,21 +16,58 @@ invocation:
   payload:
     required:
       operation: unlock-user
+      mode: verify | modify
+      destination_account_id: string
+      node_id: string
       username: string
-    optional: []
-  example_python: "Same pattern as apply-ansible-playbook: boto3.client('lambda').invoke(FunctionName=<SreManagementFunctionArn>, InvocationType='RequestResponse', Payload=json.dumps(payload))."
+    optional:
+      destination_region: string
+  example_python: |
+    import json
+    import boto3
+
+    client = boto3.client("lambda")
+    payload = {
+      "operation": "unlock-user",
+      "mode": "modify",
+      "destination_account_id": "123456789012",
+      "destination_region": "us-east-1",
+      "node_id": "mi-0123456789abcdef0",
+      "username": "jdoe",
+    }
+    response = client.invoke(
+      FunctionName="<SreManagementFunctionArn>",
+      InvocationType="RequestResponse",
+      Payload=json.dumps(payload).encode("utf-8"),
+    )
+    print(json.load(response["Payload"]))
   response:
-    success: object with status, message
+    success: object with status, message, and fields below
     error: object with status, error, message
 
 inputs:
   required:
     - operation
+    - mode
+    - destination_account_id
+    - node_id
     - username
-  optional: []
+  optional:
+    - destination_region
 outputs:
   success:
     - status
+    - operation
+    - destination_account_id
+    - destination_region
+    - username
+    - node_id
+    - command_id
+    - user_found
+    - locked_out        # verify mode only
+    - verified          # verify mode only (true when user_found and not locked_out)
+    - was_locked_out    # modify mode only
+    - unlocked          # modify mode only
     - message
   error:
     - status
